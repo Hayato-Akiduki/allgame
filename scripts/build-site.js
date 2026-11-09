@@ -51,13 +51,17 @@ for (const g of games) {
     fs.copyFileSync(src, path.join(dest, 'index.html'));
   }
   injectHub(path.join(dest, 'index.html'));
-  list.push({ id: g.id, title: g.title, genre: g.genre, color: g.color, url: `${g.id}/` }); // 相対パス（GitHub Pages のサブフォルダでも動くように）
+  // url は相対パス（GitHub Pages のサブフォルダでも動くように）
+  list.push({ id: g.id, title: g.title, genre: g.genre, color: g.color, url: `${g.id}/`, saveKeys: g.saveKeys || [] });
 }
 
-// トップページ: アプリのゲーム選択画面に、サイト版だけのプレイ記録（dashboard.js）を足す
+// トップページ: アプリのゲーム選択画面に、サイト版だけのプレイ記録（dashboard.js）と
+// セーブの書き出し・読み込み（backup.js）を足す
 const menuHtml = fs.readFileSync(path.join(ROOT, 'app', 'menu', 'index.html'), 'utf8');
-fs.writeFileSync(path.join(OUT, 'index.html'), menuHtml.replace('<script>', '<script src="dashboard.js"></script>\n<script>'));
+const siteScripts = '<script src="dashboard.js"></script>\n<script src="backup.js"></script>\n';
+fs.writeFileSync(path.join(OUT, 'index.html'), menuHtml.replace('<script>', siteScripts + '<script>'));
 fs.copyFileSync(path.join(ROOT, 'site', 'dashboard.js'), path.join(OUT, 'dashboard.js'));
+fs.copyFileSync(path.join(ROOT, 'site', 'backup.js'), path.join(OUT, 'backup.js'));
 fs.copyFileSync(path.join(ROOT, 'build', 'icon.png'), path.join(OUT, 'icon.png'));
 fs.copyFileSync(path.join(ROOT, 'site', 'hub.js'), path.join(OUT, 'hub.js'));
 // GitHub Pages が「_ で始まるファイル」を無視しないようにする
