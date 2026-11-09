@@ -1,5 +1,5 @@
 // サイト版 ALLGAME の「セーブの書き出し・読み込み」。
-// トップページの右上にボタンを出す。アプリ版にはこのファイルを読み込まないので出ない。
+// トップページの「セーブ」パネルから呼ばれる。アプリ版にはこのファイルを読み込まないので出ない。
 //
 // - 書き出し: このブラウザにある ALLGAME の全ゲームのセーブを 1 つの JSON ファイルにして保存する
 // - 読み込み: そのファイルを選ぶと、中のセーブをこのブラウザに書き戻す（同じゲームのセーブは上書き）
@@ -69,52 +69,27 @@
     location.reload();
   }
 
-  const CSS = `
-    .backup { display: flex; gap: 8px; margin-left: auto; align-self: center; }
-    .backup button {
-      font: inherit; font-size: 13px; color: var(--text); cursor: pointer;
-      background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px;
-      transition: background .15s ease, border-color .15s ease;
-    }
-    .backup button:hover, .backup button:focus-visible { background: var(--panel-hover); border-color: var(--muted); outline: none; }
-  `;
+  // トップページから呼ぶための関数。ボタンなどの表示はトップページ側でする
+  const prefixesReady = fetch('__games.json')
+    .then((r) => r.json())
+    .then((d) => OWN_KEYS.concat(...(d.games || []).map((g) => g.saveKeys || [])))
+    .catch(() => OWN_KEYS);
 
-  async function setup() {
-    let games = [];
-    try { games = (await (await fetch('__games.json')).json()).games || []; } catch { return; }
-    const prefixes = OWN_KEYS.concat(...games.map((g) => g.saveKeys || []));
-
-    const style = document.createElement('style');
-    style.textContent = CSS;
-    document.head.appendChild(style);
-
-    const box = document.createElement('div');
-    box.className = 'backup';
-    const exportBtn = document.createElement('button');
-    exportBtn.type = 'button';
-    exportBtn.textContent = '💾 セーブを書き出す';
-    exportBtn.title = '全ゲームのセーブを1つのファイルに保存します';
-    const importBtn = document.createElement('button');
-    importBtn.type = 'button';
-    importBtn.textContent = '📂 セーブを読み込む';
-    importBtn.title = '書き出したファイルからセーブを戻します';
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json,application/json';
-    input.hidden = true;
-
-    exportBtn.addEventListener('click', () => exportSaves(prefixes));
-    importBtn.addEventListener('click', () => input.click());
-    input.addEventListener('change', () => {
-      const file = input.files && input.files[0];
-      input.value = '';
-      if (file) importSaves(file, prefixes);
-    });
-
-    box.append(exportBtn, importBtn, input);
-    document.querySelector('header').appendChild(box);
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
-  else setup();
+  window.ALLGAME_BACKUP = {
+    async exportSaves() { exportSaves(await prefixesReady); },
+    // ファイル選択を開き、選ばれたファイルを読み込む
+    async importSaves() {
+      const prefixes = await prefixesReady;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json,application/json';
+      input.addEventListener('change', () => {
+        const file = input.files && input.files[0];
+        if (file) importSaves(file, prefixes);
+      });
+      input.click();
+    },
+    // テスト用: ファイルを直接渡して読み込む
+    async importFile(file) { importSaves(file, await prefixesReady); },
+  };
 })();

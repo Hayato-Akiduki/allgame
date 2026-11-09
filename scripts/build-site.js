@@ -33,7 +33,7 @@ const list = [];
 for (const g of games) {
   if (g.native) continue;
   if (g.webUrl) {
-    list.push({ id: g.id, title: g.title, genre: g.genre, color: g.color, url: g.webUrl, external: true });
+    list.push({ id: g.id, icon: g.icon, title: g.title, genre: g.genre, color: g.color, url: g.webUrl, external: true });
     continue;
   }
   const src = path.join(ROOT, g.path);
@@ -52,7 +52,7 @@ for (const g of games) {
   }
   injectHub(path.join(dest, 'index.html'));
   // url は相対パス（GitHub Pages のサブフォルダでも動くように）
-  list.push({ id: g.id, title: g.title, genre: g.genre, color: g.color, url: `${g.id}/`, saveKeys: g.saveKeys || [] });
+  list.push({ id: g.id, icon: g.icon, title: g.title, genre: g.genre, color: g.color, url: `${g.id}/`, saveKeys: g.saveKeys || [] });
 }
 
 // トップページ: アプリのゲーム選択画面に、サイト版だけのプレイ記録（dashboard.js）と

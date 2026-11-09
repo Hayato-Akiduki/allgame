@@ -1,6 +1,6 @@
-// サイト版 ALLGAME のトップページに出すプレイ記録（ダッシュボード）。
-// トップページ（app/menu/index.html）がカードを並べたあとに window.ALLGAME_DASHBOARD(games) を呼ぶ。
-// アプリ版ではこのファイルを読み込まないので、何も起きない。
+// サイト版 ALLGAME のプレイ記録・進み具合・スタンプを計算して、トップページに渡す。
+// トップページ（app/menu/index.html）が window.ALLGAME_DATA.load(games) を呼んで表示に使う。
+// 表示は全部トップページ側でする。アプリ版ではこのファイルを読み込まないので、記録の表示は出ない。
 //
 // 使うデータ（どれもこのブラウザの localStorage にあるもの。読むだけで書き換えない）
 // - allgame-stats … hub.js が記録するプレイ回数・時間・最後に遊んだ日時
@@ -135,78 +135,10 @@
     if (s < 86400 * 30) return `${Math.floor(s / 86400)}日前`;
     return new Date(t).toLocaleDateString('ja-JP');
   };
-  const el = (tag, cls, text) => {
-    const e = document.createElement(tag);
-    if (cls) e.className = cls;
-    if (text != null) e.textContent = text;
-    return e;
-  };
 
-  const CSS = `
-    .dash { padding: 0 48px 8px; }
-    .dash-summary { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
-    .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; min-width: 150px; }
-    .stat-label { color: var(--muted); font-size: 12px; }
-    .stat-value { font-size: 20px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
-    .dash h2 { font-size: 14px; font-weight: 700; color: var(--muted); letter-spacing: .06em; margin: 0 0 10px; }
-    .recent { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin-bottom: 28px; }
-    .recent a {
-      display: block; padding: 14px 16px 14px 18px; border-radius: 10px; text-decoration: none; color: inherit;
-      background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--c);
-      transition: background .15s ease, transform .15s ease;
-    }
-    .recent a:hover, .recent a:focus-visible { background: var(--panel-hover); transform: translateY(-2px); outline: none; }
-    .recent .r-title { font-weight: 700; font-size: 16px; }
-    .recent .r-meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
-    .recent .r-prog { font-size: 13px; margin-top: 8px; }
-    .all-title { padding: 0 48px; }
-    a.card .prog { margin-top: 8px; font-size: 12px; color: var(--text); opacity: .85; }
-    a.card .play {
-      position: absolute; top: 16px; right: 18px; z-index: 1; font-size: 12px; color: var(--muted);
-      font-variant-numeric: tabular-nums;
-    }
-    a.card .play.new { color: var(--c); font-weight: 700; }
-    .stamps-head { display: flex; align-items: baseline; gap: 12px; }
-    .stamps-head .count { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
-    .stamps {
-      display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-      background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 28px;
-    }
-    .stamp { position: relative; display: flex; gap: 10px; align-items: center; padding: 6px; border-radius: 8px; }
-    .stamp .seal {
-      flex: none; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-size: 22px;
-      border: 2px dashed var(--line); filter: grayscale(1); opacity: .45;
-    }
-    .stamp.got .seal {
-      border: 3px solid var(--c); filter: none; opacity: 1;
-      background: radial-gradient(circle, color-mix(in srgb, var(--c) 28%, transparent), transparent 70%);
-      transform: rotate(-8deg);
-    }
-    .stamp .s-title { font-size: 13px; font-weight: 700; line-height: 1.3; }
-    .stamp .s-goal { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
-    .stamp:not(.got) .s-title { color: var(--muted); }
-    .stamp.new { background: color-mix(in srgb, var(--c) 14%, transparent); }
-    .stamp.new::after {
-      content: 'NEW'; position: absolute; top: 2px; left: 2px; font-size: 10px; font-weight: 800; letter-spacing: .05em;
-      background: var(--c); color: #0f1115; border-radius: 4px; padding: 1px 4px;
-    }
-    .stamp.new .seal { animation: stamp-in .5s cubic-bezier(.2, 1.6, .4, 1) both; }
-    @keyframes stamp-in { from { transform: scale(1.8) rotate(-30deg); opacity: 0; } to { transform: rotate(-8deg); opacity: 1; } }
-    .complete {
-      grid-column: 1 / -1; text-align: center; padding: 12px; border-radius: 8px; font-weight: 800; font-size: 16px;
-      background: linear-gradient(90deg, #6b4e00, #c9a227, #6b4e00); color: #fff8dc; letter-spacing: .04em;
-    }
-    body.allgame-complete h1 {
-      background: linear-gradient(90deg, #f5d76e, #fff3c4, #c9a227); -webkit-background-clip: text; background-clip: text; color: transparent;
-    }
-  `;
-
-  // スタンプを判定し、初めて取ったものは時刻を記録する
-  function evaluateStamps(games, stats, played, totalMs) {
-    const ctx = {
-      played, total: games.length, ms: totalMs,
-      days: Array.isArray((readJSON('allgame-stats') || {}).days) ? readJSON('allgame-stats').days.length : 0,
-    };
+  // スタンプを判定し、初めて取ったものは時刻を記録する（isNew が付く）
+  function evaluateStamps(games, played, totalMs, days) {
+    const ctx = { played, total: games.length, ms: totalMs, days };
     const list = [
       ...games.filter((g) => GAME_STAMPS[g.id]).map((g) => ({
         id: `game:${g.id}`, icon: GAME_STAMPS[g.id].icon, title: g.title, goal: GAME_STAMPS[g.id].goal, color: g.color,
@@ -221,105 +153,42 @@
       let ok = false;
       try { ok = !!s.check(); } catch { ok = false; }
       s.got = ok || !!got[s.id]; // 一度取ったスタンプは、セーブを消しても残す
+      s.isNew = false;
       if (ok && !got[s.id]) { got[s.id] = Date.now(); s.isNew = true; changed = true; }
       s.at = got[s.id] || null;
+      delete s.check;
     }
     if (changed) { try { localStorage.setItem(STAMP_KEY, JSON.stringify({ got })); } catch {} }
     return list;
   }
 
-  function renderStamps(list) {
-    const wrap = el('div');
-    const done = list.filter((s) => s.got).length;
-    const head = el('div', 'stamps-head');
-    head.append(el('h2', null, 'スタンプカード'), el('span', 'count', `${done} / ${list.length}`));
-    wrap.appendChild(head);
-    const grid = el('div', 'stamps');
-    if (done === list.length) {
-      grid.appendChild(el('div', 'complete', '🏆 スタンプコンプリート！ すべてのゲームを遊びこみました'));
-      document.body.classList.add('allgame-complete');
-    }
-    // 取ったものを先に、新しく取ったものをいちばん先に並べる
-    const sorted = [...list].sort((a, b) => (b.isNew ? 2 : b.got ? 1 : 0) - (a.isNew ? 2 : a.got ? 1 : 0));
-    for (const s of sorted) {
-      const item = el('div', `stamp${s.got ? ' got' : ''}${s.isNew ? ' new' : ''}`);
-      item.style.setProperty('--c', s.color);
-      item.title = s.got && s.at ? `${new Date(s.at).toLocaleDateString('ja-JP')} に獲得` : `目標: ${s.goal}`;
-      const text = el('div');
-      text.append(el('div', 's-title', s.title), el('div', 's-goal', s.goal));
-      item.append(el('div', 'seal', s.icon), text);
-      grid.appendChild(item);
-    }
-    wrap.appendChild(grid);
-    return { node: wrap, done, total: list.length };
-  }
-
-  window.ALLGAME_DASHBOARD = (games) => {
-    const stats = (readJSON('allgame-stats') || {}).games || {};
-    const local = games.filter((g) => !g.external);
-    const progress = {};
-    for (const g of local) {
-      try { progress[g.id] = PROGRESS[g.id] ? PROGRESS[g.id]() : null; } catch { progress[g.id] = null; }
-    }
-
-    const style = document.createElement('style');
-    style.textContent = CSS;
-    document.head.appendChild(style);
-
-    // カードに「回数・時間」または「未プレイ」と、進み具合を足す
-    document.querySelectorAll('a.card').forEach((card) => {
-      const g = games.find((x) => x.url === card.getAttribute('href'));
-      if (!g || g.external) return;
-      const st = stats[g.id];
-      const played = (st && st.plays) || progress[g.id];
-      const badge = el('span', played ? 'play' : 'play new', played && st ? `${num(st.plays)}回・${duration(st.ms)}` : played ? '' : '未プレイ');
-      if (badge.textContent) card.appendChild(badge);
-      if (progress[g.id]) card.appendChild(el('span', 'prog', progress[g.id]));
-    });
-
-    // 上部のまとめと「続きから遊ぶ」
-    const totalMs = local.reduce((sum, g) => sum + ((stats[g.id] && stats[g.id].ms) || 0), 0);
-    const playedCount = local.filter((g) => (stats[g.id] && stats[g.id].plays) || progress[g.id]).length;
-    const recent = local
-      .filter((g) => stats[g.id] && stats[g.id].last)
-      .sort((a, b) => stats[b.id].last - stats[a.id].last)
-      .slice(0, 3);
-
-    const dash = el('section', 'dash');
-    const summary = el('div', 'dash-summary');
-    const addStat = (label, value) => {
-      const s = el('div', 'stat');
-      s.append(el('div', 'stat-label', label), el('div', 'stat-value', value));
-      summary.appendChild(s);
-    };
-    addStat('合計プレイ時間', totalMs ? duration(totalMs) : '—');
-    addStat('遊んだゲーム', `${playedCount} / ${local.length}`);
-    const unplayed = local.length - playedCount;
-    addStat('まだ遊んでいない', unplayed ? `${unplayed}本` : 'なし 🎉');
-    const stamps = renderStamps(evaluateStamps(local, stats, playedCount, totalMs));
-    addStat('スタンプ', `${stamps.done} / ${stamps.total}`);
-    dash.appendChild(summary);
-
-    if (recent.length) {
-      dash.appendChild(el('h2', null, '続きから遊ぶ'));
-      const row = el('div', 'recent');
-      for (const g of recent) {
-        const a = el('a');
-        a.href = g.url;
-        a.style.setProperty('--c', g.color);
-        a.appendChild(el('div', 'r-title', g.title));
-        a.appendChild(el('div', 'r-meta', `${ago(stats[g.id].last)}・${num(stats[g.id].plays)}回・${duration(stats[g.id].ms)}`));
-        if (progress[g.id]) a.appendChild(el('div', 'r-prog', progress[g.id]));
-        row.appendChild(a);
+  window.ALLGAME_DATA = {
+    duration,
+    ago,
+    num,
+    // games: トップページが読んだゲーム一覧。外部サイト（ミニゲームランド）は記録の対象外
+    load(games) {
+      const raw = readJSON('allgame-stats') || {};
+      const stats = raw.games || {};
+      const local = games.filter((g) => !g.external);
+      const perGame = {};
+      for (const g of local) {
+        let progress = null;
+        try { progress = PROGRESS[g.id] ? PROGRESS[g.id]() : null; } catch { progress = null; }
+        const st = stats[g.id] || null;
+        perGame[g.id] = {
+          plays: (st && st.plays) || 0,
+          ms: (st && st.ms) || 0,
+          last: (st && st.last) || 0,
+          progress,
+          played: !!((st && st.plays) || progress),
+        };
       }
-      dash.appendChild(row);
-    }
-    dash.appendChild(stamps.node);
-
-    const main = document.getElementById('list');
-    main.before(dash);
-    const allTitle = el('div', 'dash all-title');
-    allTitle.appendChild(el('h2', null, 'すべてのゲーム'));
-    main.before(allTitle);
+      const totalMs = local.reduce((sum, g) => sum + perGame[g.id].ms, 0);
+      const playedCount = local.filter((g) => perGame[g.id].played).length;
+      const days = Array.isArray(raw.days) ? raw.days.length : 0;
+      const stamps = evaluateStamps(local, playedCount, totalMs, days);
+      return { perGame, totalMs, playedCount, total: local.length, days, stamps };
+    },
   };
 })();
