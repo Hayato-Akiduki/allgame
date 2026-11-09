@@ -102,6 +102,8 @@
       }
       list.appendChild(a);
     });
+    // サイト版ではプレイ記録（dashboard.js）を表示する。アプリ版にはないので何もしない
+    if (window.ALLGAME_DASHBOARD) window.ALLGAME_DASHBOARD(games);
   });
 </script>
 </body>

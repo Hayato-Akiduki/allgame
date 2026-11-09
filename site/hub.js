@@ -6,6 +6,7 @@
 //   ・開いてから数秒は見えていて、その後は細い帯だけ残して上に隠れる
 //   ・マウスを画面上端の中央に近づけると下りてくる
 //   ・ゲームの見た目とぶつからないよう Shadow DOM の中に作る
+// - プレイ回数・プレイ時間・最後に遊んだ日時を記録する（トップページのダッシュボードで表示）
 (() => {
   if (window.top !== window) return; // 枠（iframe）の中で開かれたときは出さない
   const HOME = '../';
@@ -70,4 +71,63 @@
   };
   if (document.body) mount();
   else document.addEventListener('DOMContentLoaded', mount);
+})();
+
+// ---- プレイ記録 ----
+// localStorage の 'allgame-stats' に { games: { <id>: { plays, ms, last } } } の形で保存する。
+// 放置ゲームを開きっぱなしにしても増えすぎないよう、直近 1 分以内にキーボードかマウスの操作が
+// あった時間だけをプレイ時間として数える。
+(() => {
+  if (window.top !== window) return;
+  const KEY = 'allgame-stats';
+  const IDLE_MS = 60 * 1000;
+  const TICK_MS = 5 * 1000;
+
+  // URL の最後のフォルダ名がゲームの id（例: /allgame/wordle/ → wordle）
+  const parts = location.pathname.split('/').filter(Boolean);
+  if (parts.length && /\.html?$/i.test(parts[parts.length - 1])) parts.pop();
+  const id = parts[parts.length - 1];
+  if (!id) return;
+
+  const read = () => {
+    try {
+      const d = JSON.parse(localStorage.getItem(KEY) || '{}');
+      return d && typeof d === 'object' && d.games ? d : { games: {} };
+    } catch { return { games: {} }; }
+  };
+  const update = (fn) => {
+    try {
+      const d = read();
+      const g = d.games[id] || (d.games[id] = { plays: 0, ms: 0, last: 0 });
+      fn(g);
+      localStorage.setItem(KEY, JSON.stringify(d));
+    } catch { /* 保存できない環境では記録しない */ }
+  };
+
+  // 開いた回数（1 分以内の再読み込みは数えない）
+  update((g) => {
+    const now = Date.now();
+    if (now - (g.last || 0) > 60 * 1000) g.plays += 1;
+    g.last = now;
+  });
+
+  let lastInput = Date.now();
+  let lastTick = Date.now();
+  const onInput = () => { lastInput = Date.now(); };
+  for (const type of ['keydown', 'pointerdown', 'pointermove', 'wheel', 'touchstart']) {
+    window.addEventListener(type, onInput, { capture: true, passive: true });
+  }
+
+  const flush = () => {
+    const now = Date.now();
+    const elapsed = now - lastTick;
+    lastTick = now;
+    const active = document.visibilityState === 'visible' && now - lastInput < IDLE_MS;
+    if (active && elapsed > 0 && elapsed < TICK_MS * 3) {
+      update((g) => { g.ms += elapsed; g.last = now; });
+    }
+  };
+  setInterval(flush, TICK_MS);
+  document.addEventListener('visibilitychange', flush);
+  window.addEventListener('pagehide', flush);
 })();
