@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRO TRADER SIMULATOR - リアルタイム株取引ゲーム</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- 1. トップヘッダー -->
+    <header class="terminal-header">
+        <div class="logo-section">
+            <span class="logo-badge">PRO TRADER</span>
+            <span class="app-title">Market Master</span>
+            <button class="rank-badge-btn" id="btnOpenRankModal" title="クリックで最高資産ランキング・称号・実績トロフィーを表示">
+                <span id="headerRankBadge">🔰 見習い個人</span>
+            </button>
+        </div>
+
+        <!-- 市場ステータス & 時計 & 速度 -->
+        <div class="market-clock-container">
+            <div class="market-status-dot" id="marketDot"></div>
+            <span id="marketSessionText" style="font-weight: 700; font-size: 11px; color: var(--text-secondary);">前場 LIVE</span>
+            <span class="market-time" id="marketTimeDisplay">09:00:00</span>
+
+            <div class="speed-control-group">
+                <button class="speed-btn" id="speedPause" title="一時停止">⏸</button>
+                <button class="speed-btn active" id="speed1x" data-speed="1">1x</button>
+                <button class="speed-btn" id="speed2x" data-speed="2">2x</button>
+                <button class="speed-btn" id="speed5x" data-speed="5">5x</button>
+            </div>
+        </div>
+
+        <!-- 資産サマリー -->
+        <div class="asset-summary">
+            <div class="summary-item">
+                <span class="summary-label">総資産</span>
+                <span class="summary-value" id="totalAssetDisplay">¥10,000,000</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">評価損益</span>
+                <span class="summary-value text-up" id="unrealizedPnLDisplay">+¥0 (0.00%)</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">現金残高</span>
+                <span class="summary-value" id="cashDisplay">¥10,000,000</span>
+            </div>
+            <div class="summary-item" id="marginRatioItem" style="display: none;">
+                <span class="summary-label">保証金維持率</span>
+                <span class="summary-value" id="marginRatioDisplay">-</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">実現損益 / 勝率</span>
+                <span class="summary-value" id="realizedPnLDisplay">¥0 (0%)</span>
+            </div>
+        </div>
+
+        <!-- ヘッダー右アクション -->
+        <div class="header-actions">
+            <button class="icon-btn" id="themeToggleBtn" title="ダーク/ライトモード切替"><span class="btn-icon">☀️</span><span class="btn-label">ライト</span></button>
+            <button class="action-btn-sm" id="nextDayBtn" style="background: #10b981; display: none;" title="翌営業日の9:00へ進む">翌日へ進む ➔</button>
+            <button class="action-btn-sm" id="closeAllBtn" title="すべての建玉・保有株を成行決済">全返済・売却</button>
+            <button class="icon-btn" id="soundToggleBtn" title="サウンド切替"><span class="btn-icon">🔊</span><span class="btn-label">音声ON</span></button>
+            <button class="icon-btn" id="resetGameBtn" title="セーブデータを削除して最初からやり直す"><span class="btn-icon">🔄</span><span class="btn-label">リセット</span></button>
+        </div>
+    </header>
+
+    <!-- 2. ニュース速報ティッカー -->
+    <div class="news-ticker-bar" id="newsTickerBar">
+        <span class="ticker-badge">速報 NEWS</span>
+        <div class="ticker-content" id="tickerText">東京株式市場が開場しました。各セクター活発な商いが見込まれます。</div>
+        <button class="icon-btn" id="btnOpenNewsHistory" style="padding: 2px 9px; font-size: 11px; margin-left: 8px; flex-shrink: 0;" title="過去の速報ニュース一覧を表示">📰 ニュース履歴</button>
+    </div>
+
+    <!-- 3. メインワークスペース (3カラム) -->
+    <main class="workspace">
+
+        <!-- 左ペイン：銘柄ウォッチリスト -->
+        <aside class="panel watchlist-panel">
+            <div class="panel-header">
+                <span class="panel-title">📊 監視銘柄 (Watchlist)</span>
+                <span style="font-size: 11px; color: var(--text-muted);" id="stockCountText">12銘柄</span>
+            </div>
+            <div class="watchlist-container" id="watchlistContainer">
+                <!-- JavaScriptで銘柄カードを動的生成 -->
+            </div>
+        </aside>
+
+        <!-- 中央ペイン：大型チャート ＆ ポジション管理 -->
+        <section class="center-column">
+            
+            <!-- チャートエリア -->
+            <div class="panel chart-panel">
+                <div class="panel-header">
+                    <div class="chart-header-info">
+                        <span class="chart-stock-title" id="chartStockTitle">7203 トヨモータース</span>
+                        <div class="chart-quick-stats">
+                            <span>前日比: <strong id="chartDiffDisplay" class="text-up">+0 (+0.00%)</strong></span>
+                            <span>高値: <strong id="chartHighDisplay">2,850</strong></span>
+                            <span>安値: <strong id="chartLowDisplay">2,850</strong></span>
+                            <span>出来高: <strong id="chartVolDisplay">0</strong></span>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="indicator-btn-group">
+                            <button class="indicator-btn active" id="btnToggleSMA" title="移動平均線 (SMA 5/20)">SMA</button>
+                            <button class="indicator-btn" id="btnToggleBB" title="ボリンジャーバンド (±2σ)">BB(±2σ)</button>
+                            <button class="indicator-btn active" id="btnToggleTrades" title="チャート上に自分の売買エントリー（▲買/▼売）と決済ポイント（●）をプロット">🏷️ 売買履歴</button>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-muted);" id="stockCategoryDesc">
+                            安定大型株
+                        </div>
+                    </div>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="mainChartCanvas"></canvas>
+                </div>
+            </div>
+
+            <!-- 下部：保有建玉 / 指値注文 / 履歴 / 投資家掲示板タブ -->
+            <div class="panel bottom-tabs-panel">
+                <div class="panel-header">
+                    <div class="tab-header-group">
+                        <button class="tab-btn active" data-tab="tabPositions">保有建玉・現物 (<span id="posCountBadge">0</span>)</button>
+                        <button class="tab-btn" data-tab="tabOrders">未約定の指値 (<span id="orderCountBadge">0</span>)</button>
+                        <button class="tab-btn" data-tab="tabHistory">取引履歴</button>
+                        <button class="tab-btn" data-tab="tabAnalytics">📈 成績分析</button>
+                        <button class="tab-btn" data-tab="tabBoard">💬 投資家掲示板 (<span id="boardCountBadge" class="board-badge">0</span>)</button>
+                    </div>
+                    <button class="icon-btn" id="btnExpandBottomPanel" style="padding: 3px 8px; font-size: 11px;" title="下部パネルの表示高さを拡大・縮小">⬆ パネル拡大</button>
+                </div>
+
+                <!-- タブ1: 建玉 -->
+                <div class="tab-content active" id="tabPositions">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>銘柄</th>
+                                <th>区分</th>
+                                <th>株数</th>
+                                <th>取得単価</th>
+                                <th>現在値</th>
+                                <th>評価損益</th>
+                                <th>損益率</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positionsTableBody">
+                            <tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding: 20px;">保有中の建玉はありません</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- タブ2: 未約定注文 -->
+                <div class="tab-content" id="tabOrders">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>発注時刻</th>
+                                <th>銘柄</th>
+                                <th>注文種別</th>
+                                <th>株数</th>
+                                <th>指値</th>
+                                <th>現在値</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                            <tr><td colspan="7" style="text-align:center; color: var(--text-muted); padding: 20px;">未約定の注文はありません</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- タブ3: 取引履歴 -->
+                <div class="tab-content" id="tabHistory">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>時刻</th>
+                                <th>銘柄</th>
+                                <th>種別</th>
+                                <th>株数</th>
+                                <th>約定価格</th>
+                                <th>実現損益</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <tr><td colspan="6" style="text-align:center; color: var(--text-muted); padding: 20px;">取引履歴はありません</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- タブ4: 投資家掲示板 -->
+                <div class="tab-content board-tab-content" id="tabBoard">
+                    <div class="board-toolbar">
+                        <div class="board-filter-group">
+                            <button class="board-filter-btn active" id="btnBoardFilterStock">
+                                📌 個別銘柄スレッド (<span id="boardStockLabel">7203 トヨモータース</span>)
+                            </button>
+                            <button class="board-filter-btn" id="btnBoardFilterAll">
+                                🌐 総合・市況実況 (全銘柄)
+                            </button>
+                        </div>
+                        <div class="board-sentiment-box">
+                            <span class="board-meter-label" id="boardMeterText">買いたい 50% vs 売りたい 50%</span>
+                            <div class="board-meter-bar">
+                                <div class="board-meter-bull" id="boardMeterBull" style="width: 50%;"></div>
+                                <div class="board-meter-bear" id="boardMeterBear" style="width: 50%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 書き込み一覧 -->
+                    <div class="board-post-list" id="boardPostList"></div>
+
+                    <!-- 投稿フォーム（買い煽り・売り煽り対応） -->
+                    <div class="board-form-bar">
+                        <div class="board-stance-selector">
+                            <button class="board-stance-btn bull active" data-stance="bull" title="強気コメントでイナゴ買いを誘発">🔥 買い煽り</button>
+                            <button class="board-stance-btn bear" data-stance="bear" title="弱気コメントで狼狽売りを誘発">💧 売り煽り</button>
+                            <button class="board-stance-btn neutral" data-stance="neutral" title="中立・様子見コメント">💬 様子見</button>
+                        </div>
+                        <input type="text" class="board-input" id="inputBoardComment" maxlength="100" placeholder="コメントを入力（空欄のまま投稿で定型ポジトークを書き込み）...">
+                        <button class="board-submit-btn" id="btnBoardSubmit">書き込む</button>
+                    </div>
+                </div>
+
+                <!-- タブ5: 成績・パフォーマンス分析 -->
+                <div class="tab-content" id="tabAnalytics">
+                    <div class="analytics-container">
+                        <!-- 左側：資産推移グラフ -->
+                        <div class="analytics-chart-box">
+                            <div class="analytics-box-title">📈 総資産推移（エクイティカーブ）</div>
+                            <div class="equity-canvas-wrapper">
+                                <canvas id="equityChartCanvas"></canvas>
+                            </div>
+                        </div>
+                        <!-- 右側：主要指標カードグリッド -->
+                        <div class="analytics-stats-grid">
+                            <div class="stat-card">
+                                <span class="stat-label" title="勝率">勝率</span>
+                                <span class="stat-val" id="statWinRate">0.0%</span>
+                                <span class="stat-sub" id="statWinTrades">0勝 0敗</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-label" title="プロフィットファクター (PF)">プロフィットファクター (PF)</span>
+                                <span class="stat-val" id="statProfitFactor">0.00</span>
+                                <span class="stat-sub" title="総利益 ÷ 総損失">総利益 ÷ 総損失</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-label" title="リスクリワード比">リスクリワード比</span>
+                                <span class="stat-val" id="statRiskReward">-</span>
+                                <span class="stat-sub" id="statAvgGainLoss">平均 +¥0 / -¥0</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-label" title="最大ドローダウン (MDD)">最大ドローダウン (MDD)</span>
+                                <span class="stat-val text-down" id="statMaxDrawdown">¥0 (0.0%)</span>
+                                <span class="stat-sub" title="ピークからの最大資産下落">ピークからの最大資産下落</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-label" title="支払手数料（累計）">支払手数料（累計）</span>
+                                <span class="stat-val text-down" id="statTotalFees">-¥0</span>
+                                <span class="stat-sub" title="約定代金の0.1%（最低100円）">約定代金の0.1%（最低100円）</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-label" title="源泉徴収税（差引）">源泉徴収税（差引）</span>
+                                <span class="stat-val text-down" id="statTaxPaid">-¥0</span>
+                                <span class="stat-sub" title="実現益の20.315%・損失で還付">実現益の20.315%・損失で還付</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- 右ペイン：板情報 ＆ 発注パネル -->
+        <aside class="right-column">
+            
+            <!-- 板情報パネル -->
+            <div class="panel orderbook-panel">
+                <div class="orderbook-subtabs">
+                    <button class="subtab-btn active" id="btnShowOrderbook">気配値（板）</button>
+                    <button class="subtab-btn" id="btnShowTrades">歩み値</button>
+                </div>
+
+                <div class="orderbook-container" id="orderBookWrapper">
+                    <div id="orderBookEl"></div>
+                </div>
+
+                <div class="orderbook-container" id="timeSalesWrapper" style="display: none;">
+                    <div id="timeSalesEl"></div>
+                </div>
+            </div>
+
+            <!-- 発注パネル -->
+            <div class="panel order-form-panel">
+                <div class="panel-header">
+                    <span class="panel-title">⚡ 注文エントリー</span>
+                    <span style="font-size: 12px; font-weight: 700; color: var(--color-accent);" id="formStockSymbol">7203 トヨモータース</span>
+                </div>
+                
+                <div class="order-form-body">
+                    <!-- 口座区分（現物 / 信用） -->
+                    <div class="form-toggle-group">
+                        <button class="form-toggle-btn active" id="btnAccCash">現物取引</button>
+                        <button class="form-toggle-btn" id="btnAccMargin">信用取引 (3x)</button>
+                    </div>
+
+                    <!-- 取引区分（新規 / 返済） -->
+                    <div class="form-toggle-group" id="groupTradeMode">
+                        <button class="form-toggle-btn active" id="btnModeNew">新規建て</button>
+                        <button class="form-toggle-btn" id="btnModeClose">返済・決済</button>
+                    </div>
+
+                    <!-- 売買方向（買い / 売り） -->
+                    <div class="form-toggle-group">
+                        <button class="form-toggle-btn buy-active" id="btnSideBuy">買い (BUY)</button>
+                        <button class="form-toggle-btn" id="btnSideSell">売り (SELL)</button>
+                    </div>
+
+                    <!-- 執行条件（成行 / 指値 / 逆指値） -->
+                    <div class="form-toggle-group" style="grid-template-columns: 1fr 1fr 1fr;">
+                        <button class="form-toggle-btn active" id="btnTypeMarket">成行</button>
+                        <button class="form-toggle-btn" id="btnTypeLimit">指値</button>
+                        <button class="form-toggle-btn" id="btnTypeStop" title="指定価格に達したら自動成行執行（損切り・ブレイク買い）">逆指値</button>
+                    </div>
+
+                    <!-- 指値/逆指値価格入力（成行時は非活性） -->
+                    <div class="form-row" id="limitPriceRow" style="opacity: 0.5; pointer-events: none;">
+                        <label id="labelOrderPrice">指値価格 (円) <span style="font-size: 10px; color: var(--color-accent);">※板クリックでも入力可</span></label>
+                        <div class="form-input-group">
+                            <input type="number" class="form-input" id="inputOrderPrice" value="2850" step="1">
+                        </div>
+                    </div>
+
+                    <!-- 株数入力 -->
+                    <div class="form-row">
+                        <label>発注株数 (単元: 100株)</label>
+                        <div class="form-input-group">
+                            <input type="number" class="form-input" id="inputOrderQty" value="100" min="100" step="100">
+                            <button class="quick-qty-btn" data-qty="100">+100</button>
+                            <button class="quick-qty-btn" data-qty="500">+500</button>
+                            <button class="quick-qty-btn" data-qty="1000">+1000</button>
+                        </div>
+                    </div>
+
+                    <!-- 概算概算代金計算 -->
+                    <div class="order-calc-info">
+                        <span>概算約定代金:</span>
+                        <span class="order-calc-val" id="calcOrderTotal">¥285,000</span>
+                    </div>
+
+                    <!-- 発注実行ボタン -->
+                    <button class="submit-order-btn btn-buy" id="btnSubmitOrder">買い注文を発注</button>
+                </div>
+            </div>
+
+        </aside>
+
+    </main>
+
+    <!-- ニュース履歴モーダル -->
+    <div class="modal-overlay" id="newsModalOverlay" style="display: none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <span class="modal-title">📰 本日の速報ニュース履歴</span>
+                <button class="modal-close-btn" id="btnCloseNewsModal">✕</button>
+            </div>
+            <div class="modal-body" id="newsModalList">
+                <div style="text-align: center; color: var(--text-muted); padding: 30px;">配信されたニュースはありません</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- トレーダー称号・実績モーダル -->
+    <div class="modal-overlay" id="rankModalOverlay" style="display: none;">
+        <div class="modal-box" style="width: 680px;">
+            <div class="modal-header">
+                <span class="modal-title">🏆 ランキング・称号・実績</span>
+                <button class="modal-close-btn" id="btnCloseRankModal">✕</button>
+            </div>
+            <div class="modal-body" id="rankModalContent">
+                <!-- JavaScriptで動的生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- トースト通知コンテナ -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- スクリプト読み込み順 -->
+    <script src="js/sound.js"></script>
+    <script src="js/stocks.js"></script>
+    <script src="js/market.js"></script>
+    <script src="js/chart.js"></script>
+    <script src="js/orderBook.js"></script>
+    <script src="js/portfolio.js"></script>
+    <script src="js/news.js"></script>
+    <script src="js/board.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

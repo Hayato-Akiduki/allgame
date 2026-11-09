@@ -1,0 +1,2312 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>鉄の大陸</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Antique&family=BIZ+UDPGothic:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: 上に国力と時間の帯、中央に作戦地図、右に司令部の机（タブ）。狭い画面では地図の下に机を積む */
+:root {
+  --bg: #191E1B;
+  --panel: #212823;
+  --panel-2: #29312B;
+  --line: #3A453D;
+  --ink: #E7E2D2;
+  --muted: #A29D8C;
+  --brass: #CDA85E;
+  --brass-ink: #1E1A10;
+  --danger: #D8664D;
+  --ok: #8CB466;
+  --sea: #22323A;
+  --display: "Zen Antique", "Yu Mincho", "Hiragino Mincho ProN", serif;
+  --ui: "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--ui); font-size: 13px; line-height: 1.55; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+
+.app { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.logo { font-family: var(--display); font-size: 1.35rem; letter-spacing: .12em; color: var(--brass); white-space: nowrap; }
+.b-nat { display: flex; align-items: center; gap: 8px; font-weight: 700; white-space: nowrap; }
+.chip { display: inline-block; width: 14px; height: 14px; border-radius: 2px; border: 1px solid rgba(0,0,0,.5); flex: none; }
+.res { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.res span { white-space: nowrap; }
+.res b { font-family: var(--mono); font-weight: 500; color: var(--ink); }
+.res i { font-style: normal; color: var(--muted); font-size: .8rem; margin-right: 4px; }
+.time { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.date { font-family: var(--display); font-size: 1.05rem; min-width: 9.5em; text-align: right; white-space: nowrap; }
+.play { width: 34px; height: 30px; border: 1px solid var(--brass); background: var(--brass); color: var(--brass-ink); border-radius: 4px; cursor: pointer; font-weight: 700; }
+.play.paused { background: transparent; color: var(--brass); }
+.presets { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.presets button { border: 0; background: transparent; width: 26px; height: 28px; cursor: pointer; font-family: var(--mono); }
+.presets button[aria-pressed="true"] { background: var(--panel-2); color: var(--brass); }
+#b-spd { width: 110px; accent-color: var(--brass); }
+.spdv { font-family: var(--mono); min-width: 6.2em; color: var(--muted); }
+
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 372px; min-height: 0; }
+.mapwrap { position: relative; min-width: 0; min-height: 0; background: var(--sea); overflow: hidden; }
+#map { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; display: block; }
+.ctx { position: absolute; left: 16px; bottom: 16px; width: min(360px, calc(100% - 32px)); max-height: calc(100% - 90px); overflow: auto;
+  background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 10px; }
+/* 右上のズームボタン（幅34px）の左に置き、ボタンを隠さない */
+.guide { position: absolute; top: 58px; right: 58px; width: min(290px, calc(100% - 74px)); max-height: calc(100% - 150px); overflow: auto;
+  background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.guide-head b { font-family: var(--display); font-weight: 400; font-size: 1.05rem; }
+.guide ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; }
+.guide li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; padding: 6px 8px; background: var(--panel-2); border-radius: 4px; }
+.guide li.done { opacity: .55; }
+.guide li small { grid-column: 1 / -1; color: var(--muted); font-size: .75rem; }
+.guide .btn { padding: 2px 8px; }
+.ctx-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ctx-head b { font-family: var(--display); font-size: 1.05rem; font-weight: 400; }
+.ctx p { margin: 0; }
+.tip { color: var(--muted); font-size: .8rem; }
+.urow { display: grid; grid-template-columns: 4.8em minmax(0, 1fr) 4.5em; gap: 8px; align-items: center; font-size: .8rem; }
+.bars { display: grid; gap: 2px; }
+.divs { display: grid; gap: 6px; }
+.divhead, .ubtn { width: 100%; text-align: left; border: 1px solid transparent; border-radius: 4px; cursor: pointer; padding: 3px 6px; background: transparent; }
+.divhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; background: var(--panel-2); }
+.divhead[aria-pressed="true"] { border-color: var(--brass); }
+.divhead:hover, .ubtn:hover { border-color: var(--line); }
+.ubtn[aria-pressed="false"] { opacity: .5; }
+.meter { height: 4px; background: var(--panel-2); border-radius: 2px; overflow: hidden; }
+.meter > span { display: block; height: 100%; }
+.m-hp > span { background: var(--ink); }
+.m-org > span { background: var(--ok); }
+.m-prog > span { background: var(--brass); }
+.m-ship > span { background: #8FC3DA; }
+.log { position: absolute; top: 12px; left: 16px; right: 70px; display: grid; gap: 3px; pointer-events: none; }
+.log div { justify-self: start; background: color-mix(in srgb, var(--bg) 82%, transparent); padding: 2px 8px; border-radius: 3px; font-size: .8rem; max-width: 100%; }
+.log .war, .log .bad { color: var(--danger); }
+.log .good { color: var(--ok); }
+.zoom { position: absolute; right: 16px; top: 12px; display: grid; gap: 4px; }
+.zoom button { width: 34px; height: 34px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; font-size: 1.1rem; }
+
+.side { display: grid; grid-template-rows: auto minmax(0, 1fr); border-left: 1px solid var(--line); background: var(--panel); min-height: 0; min-width: 0; }
+.tabs { display: grid; grid-template-columns: repeat(8, 1fr); border-bottom: 1px solid var(--line); }
+.tabs button { border: 0; background: transparent; padding: 10px 2px 9px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; font-weight: 700; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--brass); }
+#panel { overflow: auto; padding: 14px 16px 24px; display: grid; gap: 14px; align-content: start; }
+#panel h2 { font-family: var(--display); font-weight: 400; font-size: 1.4rem; margin: 0; line-height: 1.2; }
+#panel h3 { font-size: .75rem; letter-spacing: .14em; color: var(--brass); margin: 4px 0 0; font-weight: 700; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; text-align: right; font-family: var(--mono); }
+.list { display: grid; gap: 6px; }
+.item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 8px 10px; background: var(--panel-2); border-radius: 5px; }
+.item .t { font-weight: 700; }
+.item .d { color: var(--muted); font-size: .8rem; grid-column: 1; }
+.item .meter { grid-column: 1 / -1; }
+.item.done { opacity: .5; }
+.item.locked .t { color: var(--muted); }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 4px 10px; cursor: pointer; white-space: nowrap; }
+.btn:hover:not(:disabled) { border-color: var(--brass); }
+.btn.primary { background: var(--brass); color: var(--brass-ink); border-color: var(--brass); font-weight: 700; }
+.btn.warn { border-color: var(--danger); color: var(--danger); }
+.btn:disabled { opacity: .45; cursor: default; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.stepper { display: inline-flex; align-items: center; gap: 6px; }
+.stepper .btn { padding: 2px 9px; }
+.stepper b { font-family: var(--mono); min-width: 2ch; text-align: center; font-weight: 500; }
+.news { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: .8rem; }
+.news li { display: grid; grid-template-columns: 6.6em minmax(0, 1fr); gap: 8px; }
+.news .dt { color: var(--muted); font-family: var(--mono); font-size: .75rem; }
+.news .war, .news .bad { color: var(--danger); }
+.news .good { color: var(--ok); }
+.help { margin: 0; padding-left: 1.2em; color: var(--muted); display: grid; gap: 3px; font-size: .82rem; }
+.help b { color: var(--ink); }
+.status { font-size: .75rem; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.status.war { border-color: var(--danger); color: var(--danger); }
+.status.ally { border-color: var(--ok); color: var(--ok); }
+
+.overlay { position: fixed; inset: 0; pointer-events: none; display: flex; align-items: flex-start; padding: 70px 16px 16px; }
+.sheet { pointer-events: auto; width: min(460px, 100%); max-height: 100%; overflow: auto; background: color-mix(in srgb, var(--panel) 96%, transparent); border: 1px solid var(--line); border-radius: 8px; padding: 20px; display: grid; gap: 14px; box-shadow: 0 20px 50px rgba(0,0,0,.45); }
+.sheet h1 { font-family: var(--display); font-weight: 400; font-size: 2.3rem; margin: 0; letter-spacing: .14em; color: var(--brass); line-height: 1.1; }
+.sheet p { margin: 0; color: var(--muted); }
+.natlist { display: grid; gap: 6px; }
+.natcard { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 10px; align-items: center; text-align: left; padding: 8px 10px; border-radius: 5px; border: 1px solid var(--line); background: var(--panel-2); cursor: pointer; }
+.natcard[aria-pressed="true"] { border-color: var(--brass); box-shadow: inset 0 0 0 1px var(--brass); }
+.natcard .n { font-weight: 700; }
+.natcard .s { font-size: .78rem; color: var(--muted); }
+.natcard .tag { font-size: .72rem; color: var(--muted); }
+.natcard .tag.ag { color: var(--danger); }
+.seg .btn[aria-pressed="true"] { border-color: var(--brass); color: var(--brass); box-shadow: inset 0 0 0 1px var(--brass); }
+.toast { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 6px; font-weight: 700; max-width: calc(100% - 32px); opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 5; }
+.toast.show { opacity: 1; }
+.toast.war { background: var(--danger); color: #fff; }
+.helpbtn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: transparent; color: var(--brass); cursor: pointer; font-weight: 700; }
+.helpbtn:hover { border-color: var(--brass); }
+.sheet h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 1.35rem; color: var(--ink); line-height: 1.3; }
+/* 遊び方と用語集 */
+.modal { position: fixed; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(8,10,9,.6); }
+.manual { width: min(760px, 100%); max-height: 100%; display: grid; grid-template-rows: auto auto minmax(0, 1fr); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+.manual-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px 10px; }
+.manual-head h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 1.5rem; color: var(--brass); letter-spacing: .08em; }
+.manual-nav { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 18px 12px; border-bottom: 1px solid var(--line); }
+.manual-body { overflow: auto; padding: 4px 18px 22px; overscroll-behavior: contain; }
+.manual-body section { padding-top: 14px; display: grid; gap: 8px; }
+.manual-body h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 1.15rem; color: var(--ink); }
+.manual-body p, .manual-body li { color: var(--muted); }
+.manual-body p { margin: 0; }
+.manual-body b { color: var(--ink); }
+.manual-body ul { margin: 0; padding-left: 1.2em; display: grid; gap: 3px; }
+.goal { padding: 10px 12px; border-radius: 6px; background: var(--panel-2); border-left: 3px solid var(--ok); }
+.goal.lose { border-left-color: var(--danger); }
+.goal p { color: var(--ink); }
+.terms { margin: 0; display: grid; grid-template-columns: 9em minmax(0, 1fr); gap: 6px 14px; }
+.terms dt { font-weight: 700; color: var(--ink); }
+.terms dd { margin: 0; color: var(--muted); }
+.tbl-wrap { overflow-x: auto; }
+.tbl { border-collapse: collapse; font-size: .8rem; min-width: 100%; }
+.tbl th, .tbl td { padding: 4px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.tbl th:first-child, .tbl td:first-child { text-align: left; }
+.tbl th { color: var(--muted); font-weight: 700; }
+.tbl td { font-family: var(--mono); }
+.tbl td:first-child { font-family: var(--ui); color: var(--ink); }
+@media (max-width: 560px) { .terms { grid-template-columns: minmax(0, 1fr); gap: 2px; } .terms dd { margin-bottom: 8px; } }
+
+@media (max-width: 860px) {
+  .app { height: auto; min-height: 100%; }
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .mapwrap { height: 64vh; min-height: 360px; }
+  .side { border-left: 0; border-top: 1px solid var(--line); }
+  #panel { overflow: visible; }
+  .time { margin-left: 0; }
+  .overlay { padding-top: 16px; align-items: flex-end; }
+  .sheet { max-height: 70%; }
+}
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+
+<div class="app">
+  <header class="bar">
+    <span class="logo">鉄の大陸</span>
+    <div class="b-nat" id="b-nat"></div>
+    <div class="res" id="b-res"></div>
+    <div class="time">
+      <span class="date" id="b-date"></span>
+      <button type="button" class="play paused" id="b-play" aria-label="時間を進める">▶</button>
+      <div class="presets" id="b-pre" role="group" aria-label="速度の目安">
+        <button type="button" data-s="0.5">1</button><button type="button" data-s="1">2</button><button type="button" data-s="2">3</button><button type="button" data-s="5">4</button><button type="button" data-s="12">5</button>
+      </div>
+      <input type="range" id="b-spd" min="0" max="100" step="1" aria-label="時間の速さ">
+      <span class="spdv" id="b-spdv"></span>
+      <button type="button" class="helpbtn" id="b-help" aria-label="遊び方と用語集" title="遊び方と用語集">？</button>
+    </div>
+  </header>
+  <div class="main">
+    <div class="mapwrap" id="mapwrap">
+      <canvas id="map" aria-label="大陸の作戦地図"></canvas>
+      <div class="log" id="log" aria-hidden="true"></div>
+      <div class="zoom"><button type="button" id="z-in" aria-label="拡大">＋</button><button type="button" id="z-out" aria-label="縮小">－</button><button type="button" id="z-fit" aria-label="全体を表示">⌖</button></div>
+      <section class="guide" id="guide" aria-label="序盤の案内" hidden></section>
+      <div class="ctx" id="ctx" hidden></div>
+    </div>
+    <aside class="side">
+      <nav class="tabs" role="tablist" id="tabs">
+        <button type="button" role="tab" data-tab="ov">国家</button>
+        <button type="button" role="tab" data-tab="ar">陸軍</button>
+        <button type="button" role="tab" data-tab="pr">生産</button>
+        <button type="button" role="tab" data-tab="bu">建設</button>
+        <button type="button" role="tab" data-tab="re">研究</button>
+        <button type="button" role="tab" data-tab="fo">方針</button>
+        <button type="button" role="tab" data-tab="na">海軍</button>
+        <button type="button" role="tab" data-tab="di">外交</button>
+      </nav>
+      <div id="panel"></div>
+    </aside>
+  </div>
+</div>
+<div class="overlay" id="start">
+  <div class="sheet" id="sheet"></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="modal" id="offer" hidden>
+  <div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="offer-title" id="offer-body"></div>
+</div>
+<div class="modal" id="manual" hidden>
+  <div class="manual" role="dialog" aria-modal="true" aria-labelledby="manual-title">
+    <div class="manual-head"><h2 id="manual-title">遊び方と用語集</h2><button type="button" class="btn" id="manual-close">閉じる</button></div>
+    <nav class="manual-nav" id="manual-nav" aria-label="目次"></nav>
+    <div class="manual-body" id="manual-body"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+(() => {
+// ================= 定義 =================
+const SAVE_KEY = 'tetsu-no-tairiku-v1';
+const UT = {
+  inf: { name: '歩兵大隊', short: '歩兵', atk: 10, def: 18, hp: 100, org: 60, speed: 1,   cost: { inf: 150 },           mp: 10000, days: 20 },
+  art: { name: '砲兵大隊', short: '砲兵', atk: 22, def: 12, hp: 100, org: 45, speed: .9,  cost: { inf: 60, art: 60 },  mp: 8000,  days: 25 },
+  arm: { name: '機甲大隊', short: '機甲', atk: 30, def: 14, hp: 110, org: 55, speed: 1.8, cost: { inf: 40, tank: 80 }, mp: 8000,  days: 30, req: 'arm1' },
+};
+const EQ = { inf: { name: '歩兵装備', rate: 2 }, art: { name: '火砲', rate: 1 }, tank: { name: '戦車', rate: .6 }, ship: { name: '艦艇資材', rate: 3 } };
+const ST = {
+  dd: { name: '駆逐艦', short: '駆逐', atk: 6,  hp: 40,  speed: 3,   cost: 250,  days: 30 },
+  cl: { name: '巡洋艦', short: '巡洋', atk: 14, hp: 80,  speed: 2.4, cost: 600,  days: 50 },
+  bb: { name: '戦艦',   short: '戦艦', atk: 34, hp: 220, speed: 1.8, cost: 1600, days: 90 },
+};
+const TERR = {
+  plains:   { name: '平地', move: 1,   def: 1,    arm: 1.15 },
+  forest:   { name: '森林', move: 1.4, def: 1.25, arm: .8 },
+  hills:    { name: '丘陵', move: 1.5, def: 1.3,  arm: .85 },
+  mountain: { name: '山岳', move: 2.2, def: 1.6,  arm: .6 },
+  marsh:    { name: '湿地', move: 1.9, def: 1.35, arm: .6 },
+  urban:    { name: '都市', move: 1.1, def: 1.4,  arm: .75 },
+};
+const TERR_I = ['plains', 'forest', 'hills', 'mountain', 'marsh', 'urban'];
+const SLOTS = { plains: 3, forest: 2, hills: 2, mountain: 1, marsh: 1, urban: 6 };
+const COST = { civ: 1200, mil: 900, fort: 500, port: 600 };
+const BNAME = { civ: '民需工場', mil: '軍需工場', fort: '要塞', port: '港' };
+const TECH = [
+  { id: 'ind1', name: '生産技術 I',   days: 60,  desc: '軍需生産 +10%', fx: { prod: .1 } },
+  { id: 'ind2', name: '生産技術 II',  days: 90,  req: 'ind1', desc: '軍需生産 +10%', fx: { prod: .1 } },
+  { id: 'ind3', name: '生産技術 III', days: 120, req: 'ind2', desc: '軍需生産 +10%', fx: { prod: .1 } },
+  { id: 'con1', name: '建設技術 I',   days: 60,  desc: '建設速度 +15%', fx: { build: .15 } },
+  { id: 'con2', name: '建設技術 II',  days: 100, req: 'con1', desc: '建設速度 +15%', fx: { build: .15 } },
+  { id: 'inf1', name: '歩兵装備 II',  days: 60,  desc: '歩兵の攻撃・防御 +15%', fx: { infAtk: .15, infDef: .15 } },
+  { id: 'inf2', name: '歩兵装備 III', days: 100, req: 'inf1', desc: '歩兵の攻撃・防御 +15%', fx: { infAtk: .15, infDef: .15 } },
+  { id: 'art1', name: '砲兵改良',     days: 70,  req: 'inf1', desc: '砲兵の攻撃 +25%', fx: { artAtk: .25 } },
+  { id: 'arm1', name: '戦車 I',       days: 90,  desc: '機甲大隊と戦車の生産を解禁', fx: {} },
+  { id: 'arm2', name: '戦車 II',      days: 120, req: 'arm1', desc: '機甲の攻撃・防御 +20%', fx: { armAtk: .2, armDef: .2 } },
+  { id: 'doc1', name: '塹壕戦術',     days: 70,  desc: '全師団の防御 +10%', fx: { def: .1 } },
+  { id: 'doc2', name: '機動戦術',     days: 100, req: 'arm1', desc: '全師団の攻撃 +10%・機甲の速度 +20%', fx: { atk: .1, armSpeed: .2 } },
+  { id: 'mp1',  name: '動員計画',     days: 60,  desc: '人的資源の増加 +25%', fx: { mp: .25 } },
+  { id: 'nav1', name: '艦砲射撃術',   days: 80,  desc: '艦艇の攻撃 +20%', fx: { shipAtk: .2 } },
+  { id: 'nav2', name: '揚陸戦術',     days: 90,  desc: '上陸戦の攻撃 ×0.5 → ×0.75', fx: { amph: .25 } },
+];
+const TECHM = Object.fromEntries(TECH.map(t => [t.id, t]));
+const AI_TECH = ['ind1', 'inf1', 'con1', 'arm1', 'doc1', 'ind2', 'art1', 'mp1', 'inf2', 'doc2', 'con2', 'arm2', 'nav1', 'ind3', 'nav2'];
+const FOCUS = [
+  { id: 'f_ind1',  name: '工業拡張',   desc: '民需工場 +2', fx: { civ: 2 } },
+  { id: 'f_ind2',  name: '重工業化',   req: 'f_ind1', desc: '軍需工場 +3', fx: { mil: 3 } },
+  { id: 'f_tech',  name: '技術振興',   req: 'f_ind1', desc: '研究速度 +15%', fx: { research: .15 } },
+  { id: 'f_mob',   name: '部分動員',   desc: '人的資源 +4万・消費財 -5%', fx: { mpNow: 40000, cg: -.05 } },
+  { id: 'f_mob2',  name: '総動員',     req: 'f_mob', desc: '人的資源の増加 +50%・消費財 -5%', fx: { mp: .5, cg: -.05 } },
+  { id: 'f_army',  name: '陸軍改革',   req: 'f_mob', desc: '全師団の攻撃 +10%', fx: { atk: .1 } },
+  { id: 'f_blitz', name: '機動戦構想', req: 'f_army', desc: '機甲の攻撃 +15%・速度 +20%', fx: { armAtk: .15, armSpeed: .2 } },
+  { id: 'f_fort',  name: '国境要塞線', desc: '国境の全州に要塞 +2', fx: { forts: 2 } },
+  { id: 'f_doct',  name: '縦深防御',   req: 'f_fort', desc: '全師団の防御 +10%', fx: { def: .1 } },
+  { id: 'f_dipl',  name: '同盟外交',   desc: '中立国が同盟に応じやすくなる', fx: { dipl: 1 } },
+];
+const FOCM = Object.fromEntries(FOCUS.map(f => [f.id, f]));
+const FOCUS_DAYS = 50;
+// 難易度：拡張志向のAIがどれだけ遠慮なく攻めてくるか
+//   grace     プレイヤーを標的にしない期間（日）
+//   dogpile   別の拡張志向の国がすでに狙っている国も標的にするか
+//   warn      プレイヤーへの戦争準備が始まったら一時停止して知らせるか
+//   prepDays  プレイヤーへの戦争準備にかかる日数（AI同士は常に30日）
+//   help      プレイヤーが攻められたとき、防衛志向の隣国が助けに来るか
+const DIFF = {
+  easy:   { name: 'やさしい',   grace: 300, dogpile: false, warn: true,  prepDays: 60, help: true,
+            desc: '最初の約10か月は攻められません。攻められると防衛志向の隣国が助けに来ます。戦争の準備が始まると一時停止して知らせ、開戦まで60日あります。' },
+  normal: { name: 'ふつう',     grace: 0,   dogpile: false, warn: true,  prepDays: 60, help: false,
+            desc: '拡張志向の国が、同じ国を同時に狙うことはありません。戦争の準備が始まると一時停止して知らせ、開戦まで60日あります。' },
+  hard:   { name: 'むずかしい', grace: 0,   dogpile: true,  warn: false, prepDays: 30, help: false,
+            desc: '拡張志向の国は、弱い国を遠慮なく狙います。複数の国から同時に攻められることもあり、戦争の準備は30日で整います。' },
+};
+const DF = () => DIFF[G.diff] || DIFF.normal;
+// 講和と休戦（数値はシミュレーションで調整）
+//   truce       講和後、互いに宣戦できない日数
+//   check       AI同士の講和を判定する間隔（日）
+//   minAge      開戦からこの日数がたつまでは講和しない
+//   decisive / decisiveP   負けている側の戦況が -decisive 以下なら、この確率で講和（勝っている側が首都を占領済みなら続ける）
+//   greedy      勝っている側が拡張志向なら、講和の確率にこれを掛ける
+//   staleAge / staleGap / staleP   長く膠着した戦争は、この確率で講和
+//   offerLose   AIの戦況がこれ以下なら、AIからプレイヤーに講和を申し込む
+//   offerWin    AIの戦況がこれ以上で、ほかの戦争も抱えていれば申し込む
+//   offerCD     断られたあと、次に申し込むまでの日数
+const PEACE = { truce: 720, check: 10, minAge: 20, decisive: 15, decisiveP: .7, greedy: .5, staleAge: 360, staleGap: 10, staleP: .3,
+  offerLose: 15, offerWin: 15, offerMinAge: 60, offerCD: 90 };
+const NATS = [
+  { name: 'ヴァルデリア帝国', color: [118, 138, 88],  ai: 'aggressive', w: 1.25 },
+  { name: 'ノルスカ連邦',     color: [88, 124, 164],  ai: 'defensive',  w: 1.1 },
+  { name: 'アウレア共和国',   color: [178, 130, 86],  ai: 'defensive',  w: 1.0 },
+  { name: 'セルヴァ人民国',   color: [168, 82, 72],   ai: 'aggressive', w: 1.15 },
+  { name: 'カルタン王国',     color: [192, 164, 76],  ai: 'defensive',  w: .9 },
+  { name: 'オストマルク公国', color: [124, 104, 158], ai: 'defensive',  w: .75 },
+];
+const SYL = ['ア', 'イ', 'エ', 'オ', 'カ', 'キ', 'ク', 'コ', 'サ', 'シ', 'ス', 'セ', 'タ', 'ト', 'ナ', 'ノ', 'ハ', 'フ', 'ベ', 'ホ', 'マ', 'ミ', 'モ', 'ラ', 'リ', 'ル', 'レ', 'ロ', 'ヴァ', 'グ', 'ド', 'バ', 'ザ', 'ガ', 'ディ', 'ブ', 'ゼ', 'ネ', 'ペ', 'ティ'];
+const SUF = ['', '', '', 'ア', 'ン', 'ル', 'スク', 'ブルク', 'ハイム', 'ポリ', 'グラード', 'ヴィル', 'ステン', 'ノフ', 'ベルク'];
+
+// ================= 乱数・ノイズ =================
+function rng(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function noise2(R) {
+  const L = new Float32Array(65536); for (let i = 0; i < L.length; i++) L[i] = R();
+  return (x, y) => {
+    const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    const a = L[(xi & 255) + ((yi & 255) << 8)], b = L[((xi + 1) & 255) + ((yi & 255) << 8)];
+    const c = L[(xi & 255) + (((yi + 1) & 255) << 8)], d = L[((xi + 1) & 255) + (((yi + 1) & 255) << 8)];
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  };
+}
+const fbm = (f, x, y, o) => { let s = 0, a = 1, t = 0; for (let i = 0; i < o; i++) { s += a * f(x, y); t += a; a *= .5; x *= 2.03; y *= 2.03; } return s / t; };
+
+// ================= 地図生成 =================
+function genMap(seed) {
+  const R = rng(seed), nLand = noise2(R), nWx = noise2(R), nWy = noise2(R), nEl = noise2(R), nMo = noise2(R);
+  const MW = 960, MH = 640, N = MW * MH;
+  const land = new Uint8Array(N);
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+    const dx = Math.abs(x / MW * 2 - 1), dy = Math.abs(y / MH * 2 - 1);
+    const d = Math.cbrt(dx * dx * dx + dy * dy * dy);
+    const h = fbm(nLand, x * .0045, y * .0045, 5) + .62 - d * .85;
+    if (h > .5 && d < .96) land[y * MW + x] = 1;
+  }
+  const q = new Int32Array(N);
+  { // いちばん大きな陸地だけ残す
+    const lab = new Int32Array(N).fill(-1); let best = -1, bs = 0, lc = 0;
+    for (let i = 0; i < N; i++) {
+      if (!land[i] || lab[i] >= 0) continue;
+      let h = 0, t = 0; q[t++] = i; lab[i] = lc;
+      while (h < t) {
+        const k = q[h++], x = k % MW;
+        if (x > 0 && land[k - 1] && lab[k - 1] < 0) { lab[k - 1] = lc; q[t++] = k - 1; }
+        if (x < MW - 1 && land[k + 1] && lab[k + 1] < 0) { lab[k + 1] = lc; q[t++] = k + 1; }
+        if (k >= MW && land[k - MW] && lab[k - MW] < 0) { lab[k - MW] = lc; q[t++] = k - MW; }
+        if (k < N - MW && land[k + MW] && lab[k + MW] < 0) { lab[k + MW] = lc; q[t++] = k + MW; }
+      }
+      if (t > bs) { bs = t; best = lc; } lc++;
+    }
+    for (let i = 0; i < N; i++) if (land[i] && lab[i] !== best) land[i] = 0;
+  }
+  // 州の種
+  const cell = 54, gx = Math.ceil(MW / cell), gy = Math.ceil(MH / cell);
+  const cs = new Int32Array(gx * gy).fill(-1), SX = [], SY = [];
+  for (let cy = 0; cy < gy; cy++) for (let cx = 0; cx < gx; cx++) {
+    const x = Math.floor((cx + .15 + R() * .7) * cell), y = Math.floor((cy + .15 + R() * .7) * cell);
+    if (x < MW && y < MH && land[y * MW + x]) { cs[cy * gx + cx] = SX.length; SX.push(x); SY.push(y); }
+  }
+  let pix = new Int32Array(N).fill(-1);
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+    const i = y * MW + x; if (!land[i]) continue;
+    const wx = x + (nWx(x * .022, y * .022) - .5) * 40, wy = y + (nWy(x * .022, y * .022) - .5) * 40;
+    const cx = Math.floor(wx / cell), cy = Math.floor(wy / cell);
+    let b = -1, bd = 1e12;
+    for (let oy = -2; oy <= 2; oy++) {
+      const yy = cy + oy; if (yy < 0 || yy >= gy) continue;
+      for (let ox = -2; ox <= 2; ox++) {
+        const xx = cx + ox; if (xx < 0 || xx >= gx) continue;
+        const s = cs[yy * gx + xx]; if (s < 0) continue;
+        const ddx = SX[s] - wx, ddy = SY[s] - wy, dd = ddx * ddx + ddy * ddy;
+        if (dd < bd) { bd = dd; b = s; }
+      }
+    }
+    pix[i] = b;
+  }
+  // 飛び地を隣の州に吸収
+  const S = SX.length;
+  for (let pass = 0; pass < 2; pass++) {
+    const comp = new Int32Array(N).fill(-1), comps = [];
+    for (let i = 0; i < N; i++) {
+      if (pix[i] < 0 || comp[i] >= 0) continue;
+      const p = pix[i], ci = comps.length, nb = new Map(), cells = [];
+      let h = 0, t = 0; q[t++] = i; comp[i] = ci;
+      while (h < t) {
+        const k = q[h++], x = k % MW; cells.push(k);
+        const ns = [x > 0 ? k - 1 : -1, x < MW - 1 ? k + 1 : -1, k >= MW ? k - MW : -1, k < N - MW ? k + MW : -1];
+        for (const j of ns) {
+          if (j < 0) continue;
+          if (pix[j] === p) { if (comp[j] < 0) { comp[j] = ci; q[t++] = j; } }
+          else if (pix[j] >= 0) nb.set(pix[j], (nb.get(pix[j]) || 0) + 1);
+        }
+      }
+      comps.push({ p, cells, nb });
+    }
+    const best = new Map();
+    comps.forEach((c, ci) => { const b = best.get(c.p); if (b === undefined || comps[b].cells.length < c.cells.length) best.set(c.p, ci); });
+    comps.forEach((c, ci) => {
+      if (best.get(c.p) === ci) return;
+      let tp = -1, tn = 0; c.nb.forEach((v, k) => { if (v > tn) { tn = v; tp = k; } });
+      for (const k of c.cells) pix[k] = tp;
+    });
+  }
+  // 小さすぎる州を統合
+  const areas = () => { const a = new Int32Array(S); for (let i = 0; i < N; i++) if (pix[i] >= 0) a[pix[i]]++; return a; };
+  let area = areas();
+  const bmap = Array.from({ length: S }, () => new Map());
+  for (let i = 0; i < N; i++) {
+    const p = pix[i]; if (p < 0) continue;
+    if (i % MW < MW - 1) { const r = pix[i + 1]; if (r >= 0 && r !== p) { bmap[p].set(r, (bmap[p].get(r) || 0) + 1); bmap[r].set(p, (bmap[r].get(p) || 0) + 1); } }
+    if (i < N - MW) { const d = pix[i + MW]; if (d >= 0 && d !== p) { bmap[p].set(d, (bmap[p].get(d) || 0) + 1); bmap[d].set(p, (bmap[d].get(p) || 0) + 1); } }
+  }
+  const remap = Int32Array.from({ length: S }, (_, i) => i);
+  const find = s => { while (remap[s] !== s) s = remap[s]; return s; };
+  [...Array(S).keys()].filter(s => area[s] > 0 && area[s] < 700).sort((a, b) => area[a] - area[b]).forEach(s => {
+    if (remap[s] !== s || area[s] >= 700) return;
+    let t = -1, tl = 0; bmap[s].forEach((v, k) => { const kk = find(k); if (kk !== s && v > tl) { tl = v; t = kk; } });
+    if (t < 0) return; remap[s] = t; area[t] += area[s]; area[s] = 0;
+  });
+  for (let i = 0; i < N; i++) if (pix[i] >= 0) pix[i] = find(pix[i]);
+  area = areas();
+  const idx = new Int32Array(S).fill(-1); let np = 0;
+  for (let s = 0; s < S; s++) if (area[s] > 0) idx[s] = np++;
+  const pix16 = new Int16Array(N);
+  for (let i = 0; i < N; i++) pix16[i] = pix[i] >= 0 ? idx[pix[i]] : -1;
+  pix = pix16;
+
+  const provs = Array.from({ length: np }, (_, id) => ({ id, sx: 0, sy: 0, n: 0, el: 0, mo: 0, es: 0, coast: false, adjM: new Map() }));
+  const provBorder = new Uint8Array(N), coast = new Uint8Array(N);
+  for (let i = 0; i < N; i++) {
+    const p = pix[i]; if (p < 0) continue;
+    const x = i % MW, y = (i / MW) | 0, P = provs[p];
+    P.sx += x; P.sy += y; P.n++;
+    if (x % 3 === 0 && y % 3 === 0) { P.el += fbm(nEl, x * .008, y * .008, 3); P.mo += fbm(nMo, x * .007, y * .007, 3); P.es++; }
+    const ns = [x > 0 ? i - 1 : -1, x < MW - 1 ? i + 1 : -1, y > 0 ? i - MW : -1, y < MH - 1 ? i + MW : -1];
+    for (const j of ns) {
+      if (j < 0) { coast[i] = 1; continue; }
+      const o = pix[j];
+      if (o < 0) { coast[i] = 1; P.coast = true; }
+      else if (o !== p) { provBorder[i] = 1; P.adjM.set(o, (P.adjM.get(o) || 0) + 1); }
+    }
+  }
+  for (const P of provs) {
+    P.cx = P.sx / P.n; P.cy = P.sy / P.n; P.el /= Math.max(1, P.es); P.mo /= Math.max(1, P.es);
+    P.adj = [...P.adjM.entries()].filter(([, v]) => v >= 3).map(([k]) => k);
+    P.lx = P.cx; P.ly = P.cy; P.ld = 1e12; P.area = P.n;
+  }
+  for (let i = 0; i < N; i++) {
+    const p = pix[i]; if (p < 0 || provBorder[i] || coast[i]) continue;
+    const P = provs[p], x = i % MW, y = (i / MW) | 0, d = (x - P.cx) ** 2 + (y - P.cy) ** 2;
+    if (d < P.ld) { P.ld = d; P.lx = x; P.ly = y; }
+  }
+  // 海の深さ（陸からの距離）
+  const seaDist = new Uint8Array(N).fill(30);
+  { let h = 0, t = 0;
+    for (let i = 0; i < N; i++) if (coast[i]) { seaDist[i] = 0; q[t++] = i; }
+    while (h < t) {
+      const k = q[h++], x = k % MW, d = seaDist[k] + 1; if (d >= 30) continue;
+      const ns = [x > 0 ? k - 1 : -1, x < MW - 1 ? k + 1 : -1, k >= MW ? k - MW : -1, k < N - MW ? k + MW : -1];
+      for (const j of ns) if (j >= 0 && pix[j] < 0 && seaDist[j] > d) { seaDist[j] = d; q[t++] = j; }
+    }
+  }
+  // 海域（外洋だけを区切る。湖は含めない）
+  const RZ = rng(seed ^ 0x5eed);
+  const ocean = new Uint8Array(N);
+  { let h = 0, t = 0;
+    for (let i = 0; i < N; i++) { const x = i % MW, y = (i / MW) | 0; if (pix[i] < 0 && (x === 0 || y === 0 || x === MW - 1 || y === MH - 1)) { ocean[i] = 1; q[t++] = i; } }
+    while (h < t) {
+      const k = q[h++], x = k % MW;
+      const ns = [x > 0 ? k - 1 : -1, x < MW - 1 ? k + 1 : -1, k >= MW ? k - MW : -1, k < N - MW ? k + MW : -1];
+      for (const j of ns) if (j >= 0 && pix[j] < 0 && !ocean[j]) { ocean[j] = 1; q[t++] = j; }
+    }
+  }
+  const zc = 125, zgx = Math.ceil(MW / zc), zgy = Math.ceil(MH / zc), zcs = new Int32Array(zgx * zgy).fill(-1), ZX = [], ZY = [];
+  for (let cy = 0; cy < zgy; cy++) for (let cx = 0; cx < zgx; cx++) for (let tr = 0; tr < 10; tr++) {
+    const x = Math.floor((cx + .1 + RZ() * .8) * zc), y = Math.floor((cy + .1 + RZ() * .8) * zc);
+    if (x < MW && y < MH && ocean[y * MW + x]) { zcs[cy * zgx + cx] = ZX.length; ZX.push(x); ZY.push(y); break; }
+  }
+  const zl = new Int32Array(N).fill(-1);
+  for (let i = 0; i < N; i++) {
+    if (!ocean[i]) continue;
+    const x = i % MW, y = (i / MW) | 0, cx = Math.floor(x / zc), cy = Math.floor(y / zc); let b = -1, bd = 1e12;
+    for (let oy = -2; oy <= 2; oy++) { const yy = cy + oy; if (yy < 0 || yy >= zgy) continue;
+      for (let ox = -2; ox <= 2; ox++) { const xx = cx + ox; if (xx < 0 || xx >= zgx) continue; const sd = zcs[yy * zgx + xx]; if (sd < 0) continue; const dd = (ZX[sd] - x) ** 2 + (ZY[sd] - y) ** 2; if (dd < bd) { bd = dd; b = sd; } } }
+    zl[i] = b;
+  }
+  const ZS = ZX.length;
+  for (let pass = 0; pass < 2; pass++) {
+    const comp = new Int32Array(N).fill(-1), comps = [];
+    for (let i = 0; i < N; i++) {
+      if (zl[i] < 0 || comp[i] >= 0) continue;
+      const lb = zl[i], ci = comps.length, nb = new Map(), cells = [];
+      let h = 0, t = 0; q[t++] = i; comp[i] = ci;
+      while (h < t) {
+        const k = q[h++], x = k % MW; cells.push(k);
+        const ns = [x > 0 ? k - 1 : -1, x < MW - 1 ? k + 1 : -1, k >= MW ? k - MW : -1, k < N - MW ? k + MW : -1];
+        for (const j of ns) { if (j < 0) continue; if (zl[j] === lb) { if (comp[j] < 0) { comp[j] = ci; q[t++] = j; } } else if (zl[j] >= 0) nb.set(zl[j], (nb.get(zl[j]) || 0) + 1); }
+      }
+      comps.push({ lb, cells, nb });
+    }
+    const best = new Map();
+    comps.forEach((c, ci) => { const b = best.get(c.lb); if (b === undefined || comps[b].cells.length < c.cells.length) best.set(c.lb, ci); });
+    comps.forEach((c, ci) => { if (best.get(c.lb) === ci) return; let tp = -1, tn = 0; c.nb.forEach((v, k) => { if (v > tn) { tn = v; tp = k; } }); if (tp >= 0) for (const k of c.cells) zl[k] = tp; });
+  }
+  { const za = new Int32Array(ZS), zb = Array.from({ length: ZS }, () => new Map());
+    for (let i = 0; i < N; i++) { const z = zl[i]; if (z < 0) continue; za[z]++;
+      if (i % MW < MW - 1) { const r = zl[i + 1]; if (r >= 0 && r !== z) { zb[z].set(r, (zb[z].get(r) || 0) + 1); zb[r].set(z, (zb[r].get(z) || 0) + 1); } }
+      if (i < N - MW) { const d = zl[i + MW]; if (d >= 0 && d !== z) { zb[z].set(d, (zb[z].get(d) || 0) + 1); zb[d].set(z, (zb[d].get(z) || 0) + 1); } } }
+    const zr = Int32Array.from({ length: ZS }, (_, i) => i), zf = s => { while (zr[s] !== s) s = zr[s]; return s; };
+    [...Array(ZS).keys()].filter(z => za[z] > 0 && za[z] < 2500).sort((a, b) => za[a] - za[b]).forEach(z => {
+      if (zr[z] !== z || za[z] >= 2500) return; let t = -1, tl = 0; zb[z].forEach((v, k) => { const kk = zf(k); if (kk !== z && v > tl) { tl = v; t = kk; } });
+      if (t < 0) return; zr[z] = t; za[t] += za[z]; za[z] = 0; });
+    for (let i = 0; i < N; i++) if (zl[i] >= 0) zl[i] = zf(zl[i]);
+  }
+  const zcount = new Int32Array(ZS); for (let i = 0; i < N; i++) if (zl[i] >= 0) zcount[zl[i]]++;
+  const zidx = new Int32Array(ZS).fill(-1); let nz = 0; for (let z = 0; z < ZS; z++) if (zcount[z] > 0) zidx[z] = nz++;
+  const zpix = new Int16Array(N); for (let i = 0; i < N; i++) zpix[i] = zl[i] >= 0 ? zidx[zl[i]] : -1;
+  const zones = Array.from({ length: nz }, (_, id) => ({ id, sx: 0, sy: 0, n: 0, adjZM: new Map(), adjPM: new Map() }));
+  const zoneBorder = new Uint8Array(N);
+  for (let i = 0; i < N; i++) {
+    const z = zpix[i]; if (z < 0) continue;
+    const x = i % MW, y = (i / MW) | 0, Zn = zones[z]; Zn.sx += x; Zn.sy += y; Zn.n++;
+    const ns = [x > 0 ? i - 1 : -1, x < MW - 1 ? i + 1 : -1, y > 0 ? i - MW : -1, y < MH - 1 ? i + MW : -1];
+    for (const j of ns) { if (j < 0) continue; const o = zpix[j];
+      if (o >= 0 && o !== z) { zoneBorder[i] = 1; Zn.adjZM.set(o, (Zn.adjZM.get(o) || 0) + 1); }
+      else if (pix[j] >= 0) Zn.adjPM.set(pix[j], (Zn.adjPM.get(pix[j]) || 0) + 1); }
+  }
+  const zused = new Set();
+  for (const Zn of zones) {
+    Zn.cx = Zn.sx / Zn.n; Zn.cy = Zn.sy / Zn.n; Zn.lx = Zn.cx; Zn.ly = Zn.cy; Zn.ld = 1e12;
+    Zn.adjZ = [...Zn.adjZM.entries()].filter(([, v]) => v >= 3).map(([k]) => k);
+    Zn.adjP = [...Zn.adjPM.entries()].filter(([, v]) => v >= 3).map(([k]) => k);
+    let nm2 = ''; for (let g = 0; g < 20; g++) { nm2 = SYL[Math.floor(RZ() * SYL.length)] + SYL[Math.floor(RZ() * SYL.length)] + (Zn.n < 7000 ? '湾' : Zn.n > 22000 ? '洋' : '海'); if (!zused.has(nm2)) break; }
+    zused.add(nm2); Zn.name = nm2;
+  }
+  for (let i = 0; i < N; i++) {
+    const z = zpix[i]; if (z < 0 || seaDist[i] < 8 || zoneBorder[i]) continue;
+    const x = i % MW, y = (i / MW) | 0; if (x < 30 || y < 24 || x > MW - 30 || y > MH - 24) continue;
+    const Zn = zones[z], d = (x - Zn.cx) ** 2 + (y - Zn.cy) ** 2; if (d < Zn.ld) { Zn.ld = d; Zn.lx = x; Zn.ly = y; }
+  }
+  provs.forEach(p => { p.zones = []; });
+  zones.forEach(Zn => Zn.adjP.forEach(pid => provs[pid].zones.push(Zn.id)));
+  // 地形
+  const byEl = [...provs].sort((a, b) => b.el - a.el), nm = Math.round(np * .1), nh = Math.round(np * .14);
+  byEl.forEach((p, k) => { p.terrain = k < nm ? 'mountain' : k < nm + nh ? 'hills' : null; });
+  const rest = provs.filter(p => !p.terrain), nf = Math.round(rest.length * .28);
+  [...rest].sort((a, b) => b.mo - a.mo).forEach((p, k) => { if (k < nf) p.terrain = 'forest'; });
+  const rest2 = rest.filter(p => !p.terrain).sort((a, b) => a.el - b.el), nmar = Math.round(rest2.length * .12);
+  rest2.forEach((p, k) => { p.terrain = k < nmar ? 'marsh' : 'plains'; });
+  // 州名
+  const used = new Set();
+  for (const p of provs) {
+    let nm2 = '';
+    for (let g = 0; g < 20; g++) {
+      nm2 = SYL[Math.floor(R() * SYL.length)] + SYL[Math.floor(R() * SYL.length)] + (R() < .3 ? SYL[Math.floor(R() * SYL.length)] : '') + SUF[Math.floor(R() * SUF.length)];
+      if (!used.has(nm2)) break;
+    }
+    used.add(nm2); p.name = nm2;
+  }
+  // 国の配置：首都を散らしてから、首都から州を取り合う
+  const K = NATS.length;
+  let caps = [Math.floor(R() * np)];
+  while (caps.length < K) {
+    let b = -1, bd = -1;
+    for (const p of provs) {
+      if (caps.includes(p.id)) continue;
+      let md = 1e12; for (const c of caps) md = Math.min(md, (p.cx - provs[c].cx) ** 2 + (p.cy - provs[c].cy) ** 2);
+      if (md > bd) { bd = md; b = p.id; }
+    }
+    caps.push(b);
+  }
+  for (let it = 0; it < 3; it++) {
+    const acc = caps.map(() => ({ x: 0, y: 0, n: 0 }));
+    for (const p of provs) { let b = 0, bd = 1e12; caps.forEach((c, k) => { const d = (p.cx - provs[c].cx) ** 2 + (p.cy - provs[c].cy) ** 2; if (d < bd) { bd = d; b = k; } }); acc[b].x += p.cx; acc[b].y += p.cy; acc[b].n++; }
+    caps = caps.map((c, k) => {
+      if (!acc[k].n) return c; const mx = acc[k].x / acc[k].n, my = acc[k].y / acc[k].n;
+      let b = c, bd = 1e12; for (const p of provs) { if (caps.includes(p.id) && p.id !== c) continue; const d = (p.cx - mx) ** 2 + (p.cy - my) ** 2; if (d < bd) { bd = d; b = p.id; } }
+      return b;
+    });
+  }
+  const defs = [...NATS.keys()]; for (let i = defs.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [defs[i], defs[j]] = [defs[j], defs[i]]; }
+  provs.forEach(p => { p.owner = -1; });
+  caps.forEach((c, k) => { provs[c].owner = k; });
+  const count = caps.map(() => 1);
+  for (let rem = np - K; rem > 0; rem--) {
+    let bn = -1, br = 1e9, bp = -1;
+    for (let k = 0; k < K; k++) {
+      const r = count[k] / NATS[defs[k]].w; if (r >= br) continue;
+      let cp = -1, cd = 1e12; const c = provs[caps[k]];
+      for (const p of provs) if (p.owner === k) for (const a of p.adj) if (provs[a].owner < 0) { const d = Math.hypot(provs[a].cx - c.cx, provs[a].cy - c.cy) * (.8 + R() * .4); if (d < cd) { cd = d; cp = a; } }
+      if (cp >= 0) { br = r; bn = k; bp = cp; }
+    }
+    if (bn < 0) break;
+    provs[bp].owner = bn; count[bn]++;
+  }
+  provs.forEach(p => { if (p.owner < 0) p.owner = 0; p.ctrl = p.owner; });
+  // 都市・工場
+  caps.forEach((c, k) => {
+    const P = provs[c]; P.terrain = 'urban';
+    provs.filter(p => p.owner === k && p.id !== c && p.terrain !== 'mountain').sort((a, b) => b.area - a.area).slice(0, 2).forEach(p => { p.terrain = 'urban'; });
+  });
+  for (const p of provs) {
+    const urban = p.terrain === 'urban';
+    p.civ = urban ? 2 : (R() < .45 ? 1 : 0);
+    p.mil = urban ? 1 : (R() < .3 ? 1 : 0);
+    p.fort = 0; p.vp = urban ? 10 : 1;
+    p.civ = Math.min(p.civ, SLOTS[p.terrain]); p.mil = Math.min(p.mil, SLOTS[p.terrain] - p.civ);
+  }
+  caps.forEach(c => { const P = provs[c]; P.civ = 4; P.mil = 2; P.vp = 30; P.fort = 1; });
+  for (const p of provs) p.port = p.zones.length && (p.terrain === 'urban' || RZ() < .25) ? 1 : 0;
+  return { MW, MH, pix, provs, provBorder, coast, seaDist, caps, defs, zones, zpix, zoneBorder };
+}
+
+// ================= ゲーム状態 =================
+let M = null, P = [], NAT = [], units = [], G = null, Z = [], ships = [], convoys = [];
+const sel = { prov: -1, units: new Set(), ships: new Set(), zone: -1 };
+let mapDirty = true, startPick = -1;
+
+const key = (a, b) => a < b ? a + '|' + b : b + '|' + a;
+const atWar = (a, b) => a !== b && G.wars.has(key(a, b));
+const allied = (a, b) => a === b || G.allies.has(key(a, b));
+const enemiesOf = a => NAT.filter(n => n.alive && atWar(a, n.id)).map(n => n.id);
+const alliesOf = a => NAT.filter(n => n.alive && n.id !== a && G.allies.has(key(a, n.id))).map(n => n.id);
+const ME = () => NAT[G.player];
+function neighborsOf(a) { const s = new Set(); for (const p of P) if (p.ctrl === a) for (const j of p.adj) { const c = P[j].ctrl; if (c !== a) s.add(c); } return [...s].filter(c => NAT[c].alive); }
+const power = u => { const t = UT[u.type]; return (t.atk + t.def) * (u.hp / t.hp) * (.5 + .5 * u.org / t.org); };
+const sumPow = arr => arr.reduce((s, u) => s + power(u), 0);
+const natPower = id => units.reduce((s, u) => s + (u.nat === id ? power(u) : 0), 0);
+const uById = id => units.find(u => u.id === id);
+
+function recompute(n) {
+  const m = { prod: 1, build: 1, infAtk: 1, infDef: 1, artAtk: 1, armAtk: 1, armDef: 1, def: 1, atk: 1, armSpeed: 1, mp: 1, research: 1, cg: .25, dipl: 0, shipAtk: 1, amph: .5 };
+  for (const id of n.techs) { const fx = TECHM[id].fx; for (const k in fx) m[k] += fx[k]; }
+  for (const id of n.focusDone) { const fx = FOCM[id].fx; for (const k of ['research', 'mp', 'cg', 'atk', 'def', 'armAtk', 'armSpeed', 'dipl']) if (fx[k]) m[k] += fx[k]; }
+  n.mod = m;
+}
+// 大隊（unit）は師団（div）に属する。師団の番号は国ごとに振る
+const newDivId = n => (n.divSeq = (n.divSeq || 0) + 1);
+function newUnit(nat, type, prov, div) { const t = UT[type]; return { id: G.uid++, nat, type, prov, div: div ?? newDivId(NAT[nat]), hp: t.hp, org: t.org, path: [], prog: 0, attacking: -1 }; }
+const divName = id => `第${id}師団`;
+// 師団の中身を「歩兵2・砲兵1」のように書く
+const divComp = list => ['inf', 'art', 'arm'].map(t => [t, list.filter(u => u.type === t).length]).filter(([, c]) => c).map(([t, c]) => UT[t].short + c).join('・');
+// 同じ州にいる大隊をまとめて1つの師団にする（開始時や古いセーブ用）
+function groupDivs(list) {
+  const g = new Map();
+  for (const u of list) { const k = u.nat + ':' + u.prov; if (!g.has(k)) g.set(k, newDivId(NAT[u.nat])); u.div = g.get(k); }
+}
+// 師団の大隊が別々の州に分かれたら（退却や落伍）、離れた側を新しい師団にする
+// 合流に向かう大隊：師団と同じ州に着いたら加わる。師団が動いたら追いかける
+function joinTick(only) {
+  for (const u of only ? [only] : units) {
+    if (!u.joinDiv) continue;
+    const tgt = units.find(o => o !== u && o.nat === u.nat && o.div === u.joinDiv);
+    if (!tgt) { u.joinDiv = 0; continue; }
+    if (tgt.prov === u.prov) { u.div = u.joinDiv; u.joinDiv = 0; u.path = [...tgt.path]; u.prog = tgt.prog; u.attacking = tgt.attacking; continue; }
+    if (!u.path.length && u.attacking < 0) { const path = findPath(u.nat, u.prov, tgt.prov, 'friendly'); if (path) { u.path = path; u.prog = 0; } else u.joinDiv = 0; }
+  }
+}
+function normalizeDivs() {
+  const g = new Map();
+  for (const u of units) { const k = u.nat + ':' + u.div; let a = g.get(k); if (!a) g.set(k, a = []); a.push(u); }
+  for (const list of g.values()) {
+    if (list.length < 2) continue;
+    const byP = new Map(); for (const u of list) { if (!byP.has(u.prov)) byP.set(u.prov, []); byP.get(u.prov).push(u); }
+    if (byP.size < 2) continue;
+    for (const grp of [...byP.values()].sort((a, b) => b.length - a.length).slice(1)) { const id = newDivId(NAT[grp[0].nat]); grp.forEach(u => { u.div = id; }); }
+  }
+}
+// 師団の一部だけを動かすときは、動かす大隊を新しい師団に切り離す
+function detach(list) {
+  const g = new Map();
+  for (const u of list) { const k = u.nat + ':' + u.div + ':' + u.prov; if (!g.has(k)) g.set(k, []); g.get(k).push(u); }
+  for (const grp of g.values()) {
+    const u0 = grp[0], ids = new Set(grp.map(u => u.id));
+    if (units.some(o => o.nat === u0.nat && o.div === u0.div && o.prov === u0.prov && !ids.has(o.id))) { const id = newDivId(NAT[u0.nat]); grp.forEach(u => { u.div = id; }); }
+  }
+}
+
+function newGame(seed) {
+  M = genMap(seed); P = M.provs; Z = M.zones; units = []; ships = []; convoys = [];
+  G = { seed, day: 0, player: -1, uid: 1, speed: G ? G.speed : 1, diff: G && G.diff || 'normal', paused: true, running: false, over: false, wars: new Set(), allies: new Set(), log: [], battles: [], navBattles: [], sid: 1, warStart: {}, truce: {}, offerCD: {}, offer: null };
+  NAT = M.defs.map((di, k) => {
+    const d = NATS[di], provsOwned = P.filter(p => p.owner === k);
+    const n = { id: k, name: d.name, color: d.color, ai: d.ai, cap: M.caps[k], alive: true,
+      eq: { inf: 450, art: 120, tank: 0, ship: 300 }, lines: { inf: 0, art: 0, tank: 0, ship: 0 }, mp: 40000 + provsOwned.length * 3000,
+      queue: [], shipQ: [], build: [], research: [null, null], techs: [], focus: null, focusDone: [], justify: null, wargoals: [], civ: 0, milT: 0, avail: 0 };
+    recompute(n);
+    const mil = provsOwned.reduce((s, p) => s + p.mil, 0);
+    n.lines.ship = provsOwned.some(p => p.port) && mil >= 3 ? 1 : 0;
+    n.lines.art = Math.floor(mil * .3); n.lines.inf = mil - n.lines.art - n.lines.ship;
+    return n;
+  });
+  for (const n of NAT) {
+    const own = P.filter(p => p.owner === n.id);
+    const border = own.filter(p => p.adj.some(a => P[a].owner !== n.id));
+    const cnt = Math.round(own.length * .5) + (n.ai === 'aggressive' ? 2 : 0);
+    for (let i = 0; i < cnt; i++) {
+      const prov = border.length ? border[i % border.length].id : n.cap;
+      units.push(newUnit(n.id, i % 4 === 3 ? 'art' : 'inf', i < 2 ? n.cap : prov));
+    }
+    n.divSeq = 0; groupDivs(units.filter(u => u.nat === n.id));
+    economyStats(n);
+    const ports = P.filter(p => p.owner === n.id && p.port);
+    if (ports.length) {
+      const home = P[n.cap].port ? n.cap : ports[0].id;
+      const fleet = ['dd', 'dd'].concat(n.ai === 'aggressive' || ports.length >= 2 ? ['cl'] : []);
+      fleet.forEach(t => ships.push(newShip(n.id, t, home)));
+    }
+  }
+  mapDirty = true;
+}
+function newShip(nat, type, port) { return { id: G.sid++, nat, type, z: -1, port, hp: ST[type].hp, path: [], prog: 0, dockAt: -1 }; }
+
+// ================= 記録 =================
+const MONTHS = 30, YEAR0 = 412;
+function dateStr(d) { const y = YEAR0 + Math.floor(d / 360), m = Math.floor(d % 360 / MONTHS) + 1, dd = d % MONTHS + 1; return `${y}年${m}月${dd}日`; }
+function log(text, kind = 'info') { G.log.push({ d: G.day, t: text, k: kind }); if (G.log.length > 60) G.log.shift(); logChanged = true; }
+let logChanged = true;
+const fmt = n => Math.floor(n).toLocaleString('ja-JP');
+const fmtMP = n => n >= 10000 ? (n / 10000).toFixed(n >= 1e5 ? 0 : 1) + '万' : fmt(n);
+const pct = x => Math.round(x * 100) + '%';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ================= 経済 =================
+function economyStats(n) {
+  let civ = 0, mil = 0, own = 0, occ = 0;
+  for (const p of P) if (p.ctrl === n.id) { civ += p.civ; mil += p.mil; if (p.owner === n.id) own++; else occ++; }
+  n.civ = civ; n.milT = mil; n.own = own; n.occ = occ;
+  n.cgF = Math.round((civ + mil) * Math.max(.05, n.mod.cg));
+  n.avail = Math.max(0, civ - n.cgF);
+  const L = n.lines; L.ship = L.ship || 0; let over = assigned(n) - mil;
+  for (const k of ['ship', 'tank', 'art', 'inf']) { const r = Math.min(over, L[k]); if (r > 0) { L[k] -= r; over -= r; } }
+  if (!n.techs.includes('arm1') && L.tank) { L.inf += L.tank; L.tank = 0; }
+  if (L.ship && !hasPort(n)) { L.inf += L.ship; L.ship = 0; }
+  if (n.id !== G.player) L.inf += Math.max(0, mil - assigned(n));
+}
+// 建設の取り消しは並び順ではなく番号で探す（完了で並びがずれても別の項目を消さない）
+const queueBuild = (n, kind, prov) => n.build.push({ id: G.sid++, kind, prov, prog: 0 });
+const assigned = n => n.lines.inf + n.lines.art + n.lines.tank + (n.lines.ship || 0);
+const freeSlots = (p, n) => SLOTS[p.terrain] - p.civ - p.mil - n.build.filter(b => b.prov === p.id && b.kind !== 'fort').length;
+function bestBuildProv(n) {
+  const fronts = new Set(frontProvs(n.id).map(p => p.id));
+  const c = P.filter(p => p.ctrl === n.id && freeSlots(p, n) > 0).sort((a, b) => (fronts.has(a.id) - fronts.has(b.id)) || (b.vp - a.vp) || (freeSlots(b, n) - freeSlots(a, n)));
+  return c[0] || null;
+}
+function frontProvs(id) { return P.filter(p => p.ctrl === id && p.adj.some(a => atWar(id, P[a].ctrl))); }
+function techAvail(n, t) { return !n.techs.includes(t.id) && !n.research.some(r => r && r.id === t.id) && (!t.req || n.techs.includes(t.req)); }
+function focusAvail(n, f) { return !n.focusDone.includes(f.id) && !(n.focus && n.focus.id === f.id) && (!f.req || n.focusDone.includes(f.req)); }
+function canTrain(n, type) {
+  const t = UT[type]; if (t.req && !n.techs.includes(t.req)) return false;
+  for (const k in t.cost) if (n.eq[k] < t.cost[k]) return false;
+  return n.mp >= t.mp;
+}
+function trainStart(n, type) { const t = UT[type]; for (const k in t.cost) n.eq[k] -= t.cost[k]; n.mp -= t.mp; n.queue.push({ type, days: t.days }); }
+function deploy(n, type) {
+  let prov = P[n.cap].ctrl === n.id ? n.cap : -1;
+  if (prov < 0) { const c = P.filter(p => p.ctrl === n.id).sort((a, b) => b.vp - a.vp)[0]; if (!c) return; prov = c.id; }
+  const u = newUnit(n.id, type, prov); units.push(u);
+  if (n.id !== G.player) return;
+  if (n.deployTo && !units.some(o => o !== u && o.nat === n.id && o.div === n.deployTo)) { log(`配属先の${divName(n.deployTo)}がなくなったため、配属先を首都の新しい師団に戻した`, 'bad'); n.deployTo = 0; }
+  if (n.deployTo) { u.joinDiv = n.deployTo; joinTick(u); log(`${UT[type].name}の訓練が完了（${divName(n.deployTo)}へ合流に向かう）`, 'good'); }
+  else log(`${UT[type].name}の訓練が完了（${P[prov].name}に${divName(u.div)}として配備）`, 'good');
+}
+function addFactories(n, kind, cnt) {
+  for (let i = 0; i < cnt; i++) { const p = P.filter(p => p.ctrl === n.id && freeSlots(p, n) > 0).sort((a, b) => b.vp - a.vp)[0]; if (!p) break; p[kind]++; }
+}
+function completeBuild(n, b) {
+  const p = P[b.prov];
+  if (p.ctrl !== n.id) { if (n.id === G.player) log(`${p.name}を失ったため${BNAME[b.kind]}の建設を中止`, 'bad'); return; }
+  if (b.kind === 'fort') p.fort = Math.min(5, p.fort + 1);
+  else if (b.kind === 'port') p.port = 1;
+  else if (p.civ + p.mil < SLOTS[p.terrain]) p[b.kind]++;
+  else addFactories(n, b.kind, 1);
+  if (n.id === G.player) log(`${p.name}で${BNAME[b.kind]}が完成`, 'good');
+}
+function completeFocus(n, id) {
+  const f = FOCM[id]; n.focusDone.push(id);
+  if (f.fx.civ) addFactories(n, 'civ', f.fx.civ);
+  if (f.fx.mil) addFactories(n, 'mil', f.fx.mil);
+  if (f.fx.mpNow) n.mp += f.fx.mpNow;
+  if (f.fx.forts) for (const p of P) if (p.ctrl === n.id && p.adj.some(a => P[a].ctrl !== n.id)) p.fort = Math.min(5, p.fort + f.fx.forts);
+  recompute(n);
+  if (n.id === G.player) log(`国家方針「${f.name}」を達成`, 'good');
+}
+function economy(n) {
+  economyStats(n);
+  n.blockade = calcBlockade(n);
+  for (const k in EQ) n.eq[k] = (n.eq[k] || 0) + n.lines[k] * EQ[k].rate * n.mod.prod * (1 - n.blockade);
+  n.mp += (n.own * 24 + n.occ * 6) * n.mod.mp;
+  let cp = n.avail * 5 * n.mod.build; const per = 50 * n.mod.build;
+  for (const b of n.build) { if (cp <= 0) break; const g = Math.min(cp, per); b.prog += g; cp -= g; }
+  n.build = n.build.filter(b => { if (b.prog < COST[b.kind]) return true; completeBuild(n, b); return false; });
+  for (let i = 0; i < 2; i++) {
+    const r = n.research[i]; if (!r) continue;
+    r.prog += n.mod.research;
+    if (r.prog >= TECHM[r.id].days) { n.techs.push(r.id); n.research[i] = null; recompute(n); if (n.id === G.player) log(`研究完了：${TECHM[r.id].name}`, 'good'); }
+  }
+  if (n.focus && ++n.focus.prog >= FOCUS_DAYS) { const id = n.focus.id; n.focus = null; completeFocus(n, id); }
+  for (const qd of n.queue) qd.days--;
+  n.queue = n.queue.filter(qd => { if (qd.days > 0) return true; deploy(n, qd.type); return false; });
+  for (const qd of n.shipQ) if (qd.days > 0) qd.days--;
+  n.shipQ = n.shipQ.filter(qd => qd.days > 0 || !deployShip(n, qd.type));
+  if (n.justify && --n.justify.days <= 0) {
+    const t = n.justify.target; n.justify = null;
+    if (!NAT[t].alive || atWar(n.id, t) || allied(n.id, t) || truceLeft(n.id, t)) return;
+    if (n.id === G.player) { n.wargoals.push(t); log(`${NAT[t].name}への戦争目標が整った。外交タブから宣戦布告できます`, 'good'); }
+    else declareWar(n.id, t);
+  }
+}
+
+// ================= 外交 =================
+const truceLeft = (a, b) => G.truce ? Math.max(0, (G.truce[key(a, b)] || 0) - G.day) : 0;
+function startWar(a, b) { G.allies.delete(key(a, b)); G.wars.add(key(a, b)); G.warStart[key(a, b)] = G.day; }
+const warAge = (a, b) => G.day - (G.warStart[key(a, b)] ?? G.day);
+function declareWar(a, b) {
+  if (atWar(a, b)) return;
+  startWar(a, b);
+  NAT[a].wargoals = NAT[a].wargoals.filter(x => x !== b);
+  const pl = a === G.player || b === G.player;
+  log(`${NAT[a].name}が${NAT[b].name}に宣戦布告`, pl ? 'war' : 'info');
+  let playerDragged = b === G.player;
+  for (const c of alliesOf(b)) {
+    if (c === a || atWar(c, a) || truceLeft(c, a)) continue;
+    startWar(c, a);
+    log(`${NAT[c].name}が同盟に基づき${NAT[a].name}に参戦`, c === G.player ? 'war' : 'info');
+    if (c === G.player) playerDragged = true;
+  }
+  if (playerDragged) { G.paused = true; toast(`${NAT[a].name}との戦争が始まりました`, 'war'); }
+}
+function makeAlliance(a, b) { G.allies.add(key(a, b)); log(`${NAT[a].name}と${NAT[b].name}が同盟を結んだ`, (a === G.player || b === G.player) ? 'good' : 'info'); }
+function warScore(x, y) {
+  let ownY = 0, gain = 0, ownX = 0, lost = 0;
+  for (const p of P) { if (p.owner === y) { ownY++; if (p.ctrl === x) gain++; } if (p.owner === x) { ownX++; if (p.ctrl === y) lost++; } }
+  return Math.round((gain / Math.max(1, ownY) - lost / Math.max(1, ownX)) * 100);
+}
+function allianceAccepts(t) {
+  const me = G.player, n = NAT[t];
+  if (atWar(me, t) || allied(me, t)) return false;
+  if (enemiesOf(me).some(e => atWar(t, e))) return true;
+  if (n.ai === 'aggressive') return false;
+  if (ME().mod.dipl) return true;
+  const threats = NAT.filter(o => o.alive && o.ai === 'aggressive' && o.id !== t && o.id !== me);
+  return threats.some(o => neighborsOf(t).includes(o.id) && (enemiesOf(o.id).length > 0 || (o.justify && o.justify.target === t)));
+}
+function makePeace(a, b) {
+  const k = key(a, b);
+  G.wars.delete(k); delete G.warStart[k]; G.truce[k] = G.day + PEACE.truce;
+  for (const [x, y] of [[a, b], [b, a]]) { const n = NAT[x]; if (n.justify && n.justify.target === y) n.justify = null; n.wargoals = n.wargoals.filter(t => t !== y); }
+  for (const p of P) { if (p.owner === a && p.ctrl === b) p.owner = b; else if (p.owner === b && p.ctrl === a) p.owner = a; }
+  fixStranded(); mapDirty = true;
+  log(`${NAT[a].name}と${NAT[b].name}が講和（${PEACE.truce}日間の休戦）`, a === G.player || b === G.player ? 'good' : 'info');
+}
+// 勝っている側（またはその同盟国）が、負けている側の首都をすでに占領しているか
+const capitalTaken = (w, l) => allied(w, P[NAT[l].cap].ctrl);
+// AI同士の講和：決着がついたら、または長く膠着したら戦争をやめる
+function aiPeace() {
+  for (const k of [...G.wars]) {
+    const [a, b] = k.split('|').map(Number);
+    if (a === G.player || b === G.player || !NAT[a].alive || !NAT[b].alive) continue;
+    const age = warAge(a, b); if (age < PEACE.minAge) continue;
+    const sc = warScore(a, b), win = sc >= 0 ? a : b, lose = win === a ? b : a, gap = Math.abs(sc);
+    if (gap >= PEACE.decisive) { if (!capitalTaken(win, lose) && Math.random() < PEACE.decisiveP * (NAT[win].ai === 'aggressive' ? PEACE.greedy : 1)) makePeace(a, b); }
+    else if (age >= PEACE.staleAge && gap <= PEACE.staleGap && Math.random() < PEACE.staleP) makePeace(a, b);
+  }
+}
+// AIからプレイヤーへの講和の申し込み
+function peaceOffers() {
+  if (!G.running || G.over || G.offer) return;
+  const me = G.player;
+  for (const e of enemiesOf(me)) {
+    if ((G.offerCD[e] || 0) > G.day || warAge(e, me) < PEACE.offerMinAge) continue;
+    const sc = warScore(e, me);
+    const kind = sc <= -PEACE.offerLose ? 'lose' : sc >= PEACE.offerWin && enemiesOf(e).length >= 2 ? 'win' : null;
+    if (!kind) continue;
+    G.offer = { from: e, kind }; G.paused = true;
+    log(`${NAT[e].name}が講和を申し込んできた`, 'good');
+    showOffer(); return;
+  }
+}
+function capitulate(nid) {
+  const n = NAT[nid], cnt = new Map();
+  for (const p of P) if (p.owner === nid && p.ctrl !== nid && NAT[p.ctrl].alive) cnt.set(p.ctrl, (cnt.get(p.ctrl) || 0) + 1);
+  let win = -1, bc = -1; cnt.forEach((v, k) => { if (v > bc) { bc = v; win = k; } });
+  if (win < 0) win = enemiesOf(nid)[0];
+  if (win === undefined || win < 0) return;
+  for (const p of P) {
+    if (p.owner === nid) { p.owner = p.ctrl !== nid && NAT[p.ctrl].alive ? p.ctrl : win; p.ctrl = p.owner; }
+    else if (p.ctrl === nid) p.ctrl = NAT[p.owner].alive && p.owner !== nid ? p.owner : win;
+  }
+  units = units.filter(u => u.nat !== nid);
+  ships = ships.filter(s => s.nat !== nid); convoys = convoys.filter(c => c.nat !== nid);
+  n.alive = false; n.queue = []; n.build = []; n.justify = null;
+  for (const k of [...G.wars]) if (k.split('|').map(Number).includes(nid)) { G.wars.delete(k); delete G.warStart[k]; }
+  if (G.offer && G.offer.from === nid) closeOffer();
+  for (const k of [...G.allies]) if (k.split('|').map(Number).includes(nid)) G.allies.delete(k);
+  for (const o of NAT) { if (o.justify && o.justify.target === nid) o.justify = null; o.wargoals = o.wargoals.filter(x => x !== nid); }
+  log(`${n.name}が降伏し、領土は${NAT[win].name}などに併合された`, nid === G.player ? 'war' : (win === G.player ? 'good' : 'info'));
+  fixStranded(); mapDirty = true;
+  if (nid === G.player) endGame(false);
+}
+function fixStranded() {
+  for (const u of units) {
+    const c = P[u.prov].ctrl;
+    if (allied(u.nat, c)) continue;
+    if (atWar(u.nat, c)) { capture(u.prov, u.nat); continue; }
+    const n = NAT[u.nat]; const home = P[n.cap].ctrl === n.id ? n.cap : (P.find(p => p.ctrl === n.id) || {}).id;
+    if (home === undefined) u.dead = true; else { u.prov = home; u.path = []; u.attacking = -1; u.prog = 0; }
+  }
+  units = units.filter(u => !u.dead);
+  for (const s of ships) if (s.z < 0 && !allied(s.nat, P[s.port].ctrl)) { s.z = P[s.port].zones[0]; s.port = -1; s.path = []; returnToPort(s); }
+}
+
+// ================= 軍事 =================
+function findPath(nid, from, to, mode) {
+  if (from === to) return [];
+  const n = P.length, dist = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), done = new Uint8Array(n);
+  dist[from] = 0;
+  for (;;) {
+    let u = -1, bd = Infinity;
+    for (let i = 0; i < n; i++) if (!done[i] && dist[i] < bd) { bd = dist[i]; u = i; }
+    if (u < 0 || u === to) break;
+    done[u] = 1;
+    for (const v of P[u].adj) {
+      const c = P[v].ctrl, hostile = atWar(nid, c);
+      if (!(allied(nid, c) || (mode === 'attack' && hostile))) continue;
+      const w = TERR[P[v].terrain].move + (hostile ? 1.5 : 0);
+      if (dist[u] + w < dist[v]) { dist[v] = dist[u] + w; prev[v] = u; }
+    }
+  }
+  if (!isFinite(dist[to])) return null;
+  const path = []; for (let v = to; v !== from; v = prev[v]) path.unshift(v);
+  return path;
+}
+function capture(pid, nid) {
+  const p = P[pid], before = p.ctrl;
+  p.ctrl = p.owner !== nid && allied(nid, p.owner) && NAT[p.owner].alive ? p.owner : nid;
+  if (p.ctrl === before) return;
+  mapDirty = true;
+  for (const s of ships) if (s.port === pid && !allied(s.nat, p.ctrl)) { s.z = p.zones[0]; s.port = -1; s.path = []; returnToPort(s); }
+  if (before === G.player && p.vp >= 10) log(`${p.name}が${NAT[nid].name}に占領された`, 'bad');
+  else if (nid === G.player && p.vp >= 10) log(`${p.name}を占領した`, 'good');
+}
+const canEnter = (nid, pid) => { const c = P[pid].ctrl; return allied(nid, c) || atWar(nid, c); };
+const eff = u => { const t = UT[u.type]; return (.3 + .7 * Math.max(0, u.org) / t.org) * (.4 + .6 * Math.max(0, u.hp) / t.hp); };
+function uAtk(u, p) {
+  const n = NAT[u.nat], t = UT[u.type]; let m = n.mod.atk;
+  if (u.type === 'inf') m *= n.mod.infAtk; else if (u.type === 'art') m *= n.mod.artAtk; else m *= n.mod.armAtk * TERR[p.terrain].arm;
+  return t.atk * m;
+}
+function uDef(u) {
+  const n = NAT[u.nat], t = UT[u.type]; let m = n.mod.def;
+  if (u.type === 'inf') m *= n.mod.infDef; else if (u.type === 'arm') m *= n.mod.armDef;
+  return t.def * m;
+}
+const moveRate = (u, pid) => .25 * UT[u.type].speed * (u.type === 'arm' ? NAT[u.nat].mod.armSpeed : 1) / TERR[P[pid].terrain].move;
+function hostilesAt(nid, pid) { return units.filter(d => d.prov === pid && atWar(nid, d.nat)); }
+
+function retreat(u) {
+  const opts = P[u.prov].adj.filter(a => allied(u.nat, P[a].ctrl) && !units.some(d => d.prov === a && atWar(u.nat, d.nat)));
+  if (!opts.length) { u.dead = true; if (u.nat === G.player) log(`${P[u.prov].name}で包囲された${UT[u.type].name}が壊滅`, 'bad'); return; }
+  const target = opts.sort((a, b) => P[b].vp - P[a].vp)[0];
+  u.prov = target; u.path = []; u.attacking = -1; u.prog = 0; u.org = 0;
+}
+function moveAndFight() {
+  const grpRate = new Map(), gk = u => u.nat + ':' + u.div + ':' + u.prov + ':' + u.path[0];
+  for (const u of units) if (u.path.length) { const k = gk(u), r = moveRate(u, u.path[0]); if (!(grpRate.get(k) <= r)) grpRate.set(k, r); }
+  for (const u of units) {
+    u.inCombat = false;
+    if (!u.path.length) { u.attacking = -1; continue; }
+    const nx = u.path[0];
+    if (!canEnter(u.nat, nx)) { u.path = []; u.attacking = -1; u.prog = 0; continue; }
+    if (u.prog < 1) u.prog += grpRate.get(gk(u)) ?? moveRate(u, nx);
+    if (u.prog >= 1) {
+      if (hostilesAt(u.nat, nx).length) { u.attacking = nx; u.prog = 1; }
+      else {
+        u.attacking = -1; u.prov = nx; u.path.shift(); u.prog = 0;
+        if (atWar(u.nat, P[nx].ctrl)) capture(nx, u.nat);
+      }
+    }
+  }
+  const battles = new Map();
+  for (const u of units) if (u.attacking >= 0) { if (!battles.has(u.attacking)) battles.set(u.attacking, []); battles.get(u.attacking).push(u); }
+  G.battles = [];
+  for (const [pid, atkAll] of battles) {
+    const p = P[pid];
+    const defAll = units.filter(d => d.prov === pid && atkAll.some(a => atWar(a.nat, d.nat)));
+    if (!defAll.length) { atkAll.forEach(a => { a.attacking = -1; }); continue; }
+    const atk = atkAll.sort((a, b) => power(b) - power(a)).slice(0, 8), def = defAll.sort((a, b) => power(b) - power(a)).slice(0, 8);
+    let A = 0, D = 0;
+    for (const a of atk) A += uAtk(a, p) * eff(a);
+    for (const d of def) D += uDef(d) * eff(d);
+    D *= TERR[p.terrain].def * (1 + .15 * p.fort);
+    const dmgD = A * (.85 + Math.random() * .3) * .5 / def.length, dmgA = D * (.85 + Math.random() * .3) * .5 / atk.length;
+    for (const d of def) { d.org -= dmgD; d.hp -= dmgD * .3; d.inCombat = true; }
+    for (const a of atk) { a.org -= dmgA; a.hp -= dmgA * .3; a.inCombat = true; }
+    G.battles.push({ pid, from: [...new Set(atk.map(a => a.prov))], A, D, an: atk[0].nat, dn: def[0].nat });
+    for (const d of def) { if (d.hp <= 0) { d.dead = true; if (d.nat === G.player) log(`${p.name}で${UT[d.type].name}が全滅`, 'bad'); } else if (d.org <= 0) retreat(d); }
+    for (const a of atk) { if (a.hp <= 0) a.dead = true; else if (a.org <= 0) { a.org = 0; a.path = []; a.attacking = -1; a.prog = 0; } }
+  }
+  units = units.filter(u => !u.dead);
+  for (const u of units) {
+    const t = UT[u.type];
+    if (u.inCombat) continue;
+    u.org = Math.min(t.org, u.org + (u.path.length ? 2 : 6));
+    if (u.hp < t.hp && allied(u.nat, P[u.prov].ctrl)) {
+      const n = NAT[u.nat], r = Math.min(4, t.hp - u.hp);
+      let ok = n.mp >= r * 100; for (const k in t.cost) if (n.eq[k] < t.cost[k] / t.hp * r) ok = false;
+      if (ok) { u.hp += r; n.mp -= r * 100; for (const k in t.cost) n.eq[k] -= t.cost[k] / t.hp * r; }
+    }
+  }
+  if (sel.units.size) for (const id of [...sel.units]) if (!uById(id)) sel.units.delete(id);
+}
+function checkCapitulation(n) {
+  if (!enemiesOf(n.id).length) return;
+  let core = 0, held = 0; for (const p of P) if (p.owner === n.id) { core++; if (p.ctrl === n.id) held++; }
+  const r = held / Math.max(1, core);
+  if ((P[n.cap].ctrl !== n.id && r < .5) || r < .25 || !P.some(p => p.ctrl === n.id)) capitulate(n.id);
+}
+
+// ================= 海軍 =================
+const hasPort = n => P.some(p => p.port && p.ctrl === n.id);
+function zoneDist(from) { const d = new Array(Z.length).fill(1e9); d[from] = 0; const qq = [from]; while (qq.length) { const z = qq.shift(); for (const y of Z[z].adjZ) if (d[y] > d[z] + 1) { d[y] = d[z] + 1; qq.push(y); } } return d; }
+function homePort(n, nearZone) {
+  const ports = P.filter(p => p.port && p.ctrl === n.id && p.zones.length);
+  if (!ports.length) return null;
+  if (nearZone === undefined || nearZone < 0) return P[n.cap].port && P[n.cap].ctrl === n.id ? P[n.cap] : ports[0];
+  const zd = zoneDist(nearZone), dist = p => Math.min(...p.zones.map(z => zd[z]));
+  return ports.sort((a, b) => dist(a) - dist(b))[0];
+}
+const sAtk = s => ST[s.type].atk * NAT[s.nat].mod.shipAtk * (.5 + .5 * s.hp / ST[s.type].hp);
+function zoneStr(z, pred) { let t = 0; for (const s of ships) if (s.z === z && pred(s.nat)) t += sAtk(s); return t; }
+const hostileStr = (z, nid) => zoneStr(z, o => atWar(nid, o));
+const friendStr = (z, nid) => zoneStr(z, o => allied(nid, o));
+const unsafe = (z, nid) => { const h = hostileStr(z, nid); return h > 0 && h > friendStr(z, nid); };
+function shipPath(starts, goals, nid, avoid) {
+  const prev = new Map(), qq = [], goal = new Set(goals);
+  for (const s0 of starts) { if (avoid && unsafe(s0, nid)) continue; if (!prev.has(s0)) { prev.set(s0, -1); qq.push(s0); } }
+  while (qq.length) {
+    const z = qq.shift();
+    if (goal.has(z)) { const path = []; let c = z; while (prev.get(c) !== -1) { path.unshift(c); c = prev.get(c); } return { start: c, path }; }
+    for (const y of Z[z].adjZ) { if (prev.has(y) || (avoid && unsafe(y, nid))) continue; prev.set(y, z); qq.push(y); }
+  }
+  return null;
+}
+function sendShip(s, goals, dockAt = -1) {
+  const starts = s.z >= 0 ? [s.z] : P[s.port].zones;
+  const r = shipPath(starts, goals, s.nat, false); if (!r) return false;
+  if (s.z < 0) { s.z = r.start; s.port = -1; }
+  s.path = r.path; s.prog = 0; s.dockAt = dockAt; return true;
+}
+function returnToPort(s) { const hp = homePort(NAT[s.nat], s.z >= 0 ? s.z : undefined); if (hp && s.port !== hp.id) sendShip(s, hp.zones, hp.id); }
+function deployShip(n, type) {
+  const hp = homePort(n); if (!hp) return false;
+  ships.push(newShip(n.id, type, hp.id));
+  if (n.id === G.player) log(`${ST[type].name}が竣工（${hp.name}港）`, 'good');
+  return true;
+}
+const canBuildShip = (n, type) => hasPort(n) && n.eq.ship >= ST[type].cost;
+function buildShip(n, type) { n.eq.ship -= ST[type].cost; n.shipQ.push({ type, days: ST[type].days }); }
+function calcBlockade(n) {
+  const zs = new Set(); for (const p of P) if (p.ctrl === n.id) for (const z of p.zones) zs.add(z);
+  let k = 0; for (const z of zs) if (unsafe(z, n.id)) k++;
+  return Math.min(.3, k * .05);
+}
+function makeConvoy(nid, list, from, target) {
+  if (!P[from].port || !P[target].zones.length) return false;
+  const r = shipPath(P[from].zones, P[target].zones, nid, true); if (!r) return false;
+  for (const u of list) { u.path = []; u.attacking = -1; u.prog = 0; sel.units.delete(u.id); }
+  units = units.filter(u => !list.includes(u));
+  convoys.push({ id: G.sid++, nat: nid, units: list, from, target, z: r.start, path: r.path, prog: 0, done: false });
+  return true;
+}
+function landConvoy(c, pid) {
+  for (const u of c.units) { u.prov = pid; u.path = []; u.attacking = -1; u.prog = 0; units.push(u); }
+  if (atWar(c.nat, P[pid].ctrl)) capture(pid, c.nat);
+  c.done = true;
+}
+function convoyTick(c) {
+  if (unsafe(c.z, c.nat)) {
+    c.done = true;
+    if (c.nat === G.player) log(`${Z[c.z].name}で輸送船団が撃沈され、${c.units.length}個大隊を失った`, 'bad');
+    else if (atWar(G.player, c.nat)) log(`${Z[c.z].name}で敵の輸送船団を撃沈`, 'good');
+    return;
+  }
+  if (c.path.length) { c.prog += .5; if (c.prog >= 1) { c.z = c.path.shift(); c.prog = 0; } return; }
+  const p = P[c.target];
+  const goBack = () => {
+    const back = allied(c.nat, P[c.from].ctrl) ? c.from : (P.find(o => o.zones.includes(c.z) && allied(c.nat, o.ctrl)) || {}).id;
+    if (back === undefined) c.done = true; else landConvoy(c, back);
+  };
+  if (!canEnter(c.nat, c.target)) { goBack(); return; }
+  const defs = units.filter(d => d.prov === c.target && atWar(c.nat, d.nat));
+  if (!defs.length) {
+    landConvoy(c, c.target);
+    if (c.nat === G.player) log(`${p.name}に上陸した`, 'good');
+    else if (p.owner === G.player || p.ctrl === G.player) log(`${NAT[c.nat].name}軍が${p.name}に上陸`, 'bad');
+    return;
+  }
+  const am = NAT[c.nat].mod.amph;
+  let A = 0, D = 0;
+  for (const u of c.units) A += uAtk(u, p) * eff(u) * am;
+  for (const d of defs) D += uDef(d) * eff(d);
+  D *= TERR[p.terrain].def * (1 + .15 * p.fort);
+  const dmgD = A * (.85 + Math.random() * .3) * .5 / defs.length, dmgA = D * (.85 + Math.random() * .3) * .5 / c.units.length;
+  for (const d of defs) { d.org -= dmgD; d.hp -= dmgD * .3; }
+  for (const u of c.units) { u.org -= dmgA; u.hp -= dmgA * .3; }
+  G.battles.push({ pid: c.target, from: [], zone: c.z, A, D, an: c.nat, dn: defs[0].nat });
+  for (const d of defs) { if (d.hp <= 0) d.dead = true; else if (d.org <= 0) retreat(d); }
+  units = units.filter(u => !u.dead);
+  c.units = c.units.filter(u => u.hp > 0);
+  if (!c.units.length) { c.done = true; return; }
+  if (c.units.every(u => u.org <= 0)) {
+    c.units.forEach(u => { u.org = 0; });
+    if (c.nat === G.player) log(`${p.name}への上陸に失敗し撤退`, 'bad');
+    goBack();
+  }
+}
+function navalTick() {
+  for (const s of ships) {
+    if (s.path.length) { s.prog += ST[s.type].speed * .2; if (s.prog >= 1) { s.z = s.path.shift(); s.prog = 0; } }
+    else if (s.dockAt >= 0 && s.z >= 0) {
+      const p = P[s.dockAt];
+      if (p.port && allied(s.nat, p.ctrl) && p.zones.includes(s.z)) { s.port = p.id; s.z = -1; }
+      s.dockAt = -1;
+    }
+  }
+  const byZ = new Map();
+  for (const s of ships) if (s.z >= 0) { if (!byZ.has(s.z)) byZ.set(s.z, []); byZ.get(s.z).push(s); }
+  G.navBattles = [];
+  for (const [z, list] of byZ) {
+    const nats = [...new Set(list.map(s => s.nat))];
+    const a0 = nats.find(a => nats.some(b => atWar(a, b))); if (a0 === undefined) continue;
+    const dmg = new Map();
+    for (const a of nats) {
+      const foes = list.filter(s => atWar(a, s.nat)); if (!foes.length) continue;
+      const tot = list.filter(s => s.nat === a).reduce((t, s) => t + sAtk(s), 0);
+      for (let k = 0; k < 3; k++) { const tg = foes[Math.floor(Math.random() * foes.length)]; dmg.set(tg, (dmg.get(tg) || 0) + tot / 3 * (.8 + Math.random() * .4) * .3); }
+    }
+    dmg.forEach((d, s) => { s.hp -= d; });
+    G.navBattles.push({ z, a: a0, b: nats.find(o => atWar(a0, o)) });
+    const playerIn = list.some(o => o.nat === G.player);
+    for (const s of list) {
+      if (s.hp <= 0) {
+        s.dead = true;
+        if (s.nat === G.player) log(`${Z[z].name}で${ST[s.type].name}が撃沈された`, 'bad');
+        else if (playerIn && atWar(G.player, s.nat)) log(`${Z[z].name}で敵の${ST[s.type].name}を撃沈`, 'good');
+      } else if (s.hp < ST[s.type].hp * .25 && !s.path.length) returnToPort(s);
+    }
+  }
+  ships = ships.filter(s => !s.dead);
+  for (const s of ships) if (s.z < 0) s.hp = Math.min(ST[s.type].hp, s.hp + ST[s.type].hp * .03);
+  for (const c of convoys) convoyTick(c);
+  convoys = convoys.filter(c => !c.done);
+  for (const id of [...sel.ships]) if (!ships.some(s => s.id === id)) sel.ships.delete(id);
+}
+function aiNavy(n) {
+  const my = ships.filter(s => s.nat === n.id); if (!my.length) return;
+  for (const s of my) if (s.hp < ST[s.type].hp * .5 && s.z >= 0 && s.dockAt < 0) returnToPort(s);
+  const ready = my.filter(s => s.hp >= ST[s.type].hp * .7 && !s.path.length && s.dockAt < 0);
+  if (!enemiesOf(n.id).length) { for (const s of ready) if (s.z >= 0) returnToPort(s); return; }
+  const myStr = ready.reduce((t, s) => t + sAtk(s), 0); if (!myStr) return;
+  let best = -1, bs = 0;
+  for (const z of Z) {
+    let v = 0;
+    for (const pid of z.adjP) { const p = P[pid]; if (atWar(n.id, p.ctrl)) v += p.port ? 3 : 1; else if (p.ctrl === n.id) v += .3; }
+    if (!v) continue;
+    const h = hostileStr(z.id, n.id); if (h > myStr * .8) continue;
+    const sc = v / (1 + h / myStr); if (sc > bs) { bs = sc; best = z.id; }
+  }
+  if (best >= 0) for (const s of ready) if (s.z !== best) sendShip(s, [best]);
+}
+function aiInvasion(n) {
+  if (!enemiesOf(n.id).length || Math.random() < .5) return;
+  const fronts = new Set(frontProvs(n.id).map(p => p.id));
+  const avail = units.filter(u => u.nat === n.id && !u.path.length && u.attacking < 0 && P[u.prov].port && P[u.prov].ctrl === n.id && !fronts.has(u.prov));
+  if (avail.length < 2) return;
+  const from = avail[0].prov, group = avail.filter(u => u.prov === from).slice(0, 3);
+  if (group.length < 2) return;
+  const targets = P.filter(p => p.zones.length && atWar(n.id, p.ctrl) && !units.some(d => d.prov === p.id && atWar(n.id, d.nat))).sort((a, b) => b.vp - a.vp);
+  for (const t of targets.slice(0, 5)) if (makeConvoy(n.id, group, from, t.id)) {
+    if (t.owner === G.player || t.ctrl === G.player) log(`${n.name}の輸送船団が${t.name}へ向かっている`, 'bad');
+    return;
+  }
+}
+
+// ================= AI =================
+function aiMilitary(n) {
+  const id = n.id, mine = units.filter(u => u.nat === id); if (!mine.length) return;
+  const byProv = new Map(); for (const u of units) { if (!byProv.has(u.prov)) byProv.set(u.prov, []); byProv.get(u.prov).push(u); }
+  const at = pid => byProv.get(pid) || [];
+  const idle = u => !u.path.length && u.attacking < 0;
+  const war = enemiesOf(id).length > 0;
+  let targets;
+  if (war) {
+    targets = frontProvs(id);
+    for (const f of targets) {
+      const here = at(f.id).filter(u => u.nat === id && idle(u)); if (!here.length) continue;
+      const myS = sumPow(here); let best = null, bs = 0;
+      for (const a of f.adj) {
+        const qp = P[a]; if (!atWar(id, qp.ctrl)) continue;
+        const es = sumPow(at(a).filter(u => atWar(id, u.nat))) * TERR[qp.terrain].def * (1 + .15 * qp.fort);
+        const r = myS / (es + 1), sc = (es === 0 ? 3 : r) * (1 + qp.vp / 20);
+        if ((es === 0 || r > 1.6) && sc > bs) { bs = sc; best = { a, es }; }
+      }
+      if (best) { const send = best.es === 0 ? here.slice(0, Math.max(1, Math.ceil(here.length / 2))) : here; for (const u of send) { u.path = [best.a]; u.prog = 0; } }
+    }
+  } else targets = P.filter(p => p.ctrl === id && p.adj.some(a => !allied(id, P[a].ctrl)));
+  if (!targets.length) return;
+  const tset = new Set(targets.map(p => p.id)), threat = new Map(), have = new Map();
+  for (const t of targets) {
+    let th = 0;
+    for (const a of t.adj) {
+      const c = P[a].ctrl; if (allied(id, c)) continue;
+      const w = atWar(id, c) ? 1 : (NAT[c].ai === 'aggressive' || c === G.player ? .5 : .25);
+      th += w * (sumPow(at(a).filter(u => u.nat === c)) + 15);
+    }
+    threat.set(t.id, th + t.vp); have.set(t.id, sumPow(at(t.id).filter(u => u.nat === id)));
+  }
+  for (const u of mine.filter(u => idle(u) && !tset.has(u.prov))) {
+    const from = P[u.prov]; let best = null, bs = -1;
+    for (const t of targets) { const s = threat.get(t.id) / (have.get(t.id) + 20) / (1 + Math.hypot(t.cx - from.cx, t.cy - from.cy) / 250); if (s > bs) { bs = s; best = t; } }
+    if (!best) continue;
+    const path = findPath(id, u.prov, best.id, 'friendly'); if (!path) continue;
+    u.path = path; u.prog = 0; have.set(best.id, have.get(best.id) + power(u));
+  }
+}
+function aiEconomy(n) {
+  const mil = n.milT, hasArm = n.techs.includes('arm1');
+  const port = hasPort(n);
+  n.lines.ship = port ? Math.round(mil * (n.ai === 'aggressive' ? .2 : .15)) : 0;
+  n.lines.tank = hasArm ? Math.round(mil * .22) : 0; n.lines.art = Math.round(mil * .22);
+  n.lines.inf = Math.max(0, mil - n.lines.tank - n.lines.art - n.lines.ship);
+  if (port) {
+    const sc = { dd: 0, cl: 0, bb: 0 }; ships.forEach(s => { if (s.nat === n.id) sc[s.type]++; }); n.shipQ.forEach(qd => sc[qd.type]++);
+    const total = sc.dd + sc.cl + sc.bb, cap = 3 + P.filter(p => p.port && p.ctrl === n.id).length * 2;
+    if (total < cap) {
+      const type = sc.bb * 4 < total && n.eq.ship >= ST.bb.cost ? 'bb' : sc.cl * 2 < sc.dd ? 'cl' : 'dd';
+      if (canBuildShip(n, type)) buildShip(n, type);
+    }
+  }
+  const mine = units.filter(u => u.nat === n.id), cnt = { inf: 0, art: 0, arm: 0 };
+  mine.forEach(u => cnt[u.type]++); n.queue.forEach(qd => cnt[qd.type]++);
+  for (let g = 0; g < 4 && n.queue.length < 4; g++) {
+    let type = 'inf'; if (cnt.art * 3 < cnt.inf) type = 'art'; if (hasArm && cnt.arm * 3 < cnt.inf) type = 'arm';
+    if (!canTrain(n, type)) { if (type !== 'inf' && canTrain(n, 'inf')) type = 'inf'; else break; }
+    if (n.mp - UT[type].mp < 12000 && mine.length > 6) break;
+    trainStart(n, type); cnt[type]++;
+  }
+  if (n.build.length < 2) {
+    const war = enemiesOf(n.id).length > 0;
+    if (war && Math.random() < .35) { const f = frontProvs(n.id).filter(p => p.fort < 3).sort((a, b) => b.vp - a.vp)[0]; if (f) { queueBuild(n, 'fort', f.id); return; } }
+    const kind = n.civ < 6 || (!war && n.ai !== 'aggressive' && n.civ < 8 + G.day / 50) ? 'civ' : 'mil';
+    const p = bestBuildProv(n); if (p) queueBuild(n, kind, p.id);
+  }
+  for (let i = 0; i < 2; i++) if (!n.research[i]) { const t = AI_TECH.map(id => TECHM[id]).find(t => techAvail(n, t)); if (t) n.research[i] = { id: t.id, prog: 0 }; }
+  if (!n.focus) {
+    const order = n.ai === 'aggressive' ? ['f_mob', 'f_army', 'f_ind1', 'f_ind2', 'f_mob2', 'f_blitz', 'f_tech', 'f_fort', 'f_doct', 'f_dipl'] : ['f_ind1', 'f_fort', 'f_ind2', 'f_doct', 'f_mob', 'f_tech', 'f_army', 'f_mob2', 'f_dipl', 'f_blitz'];
+    const id = order.find(id => focusAvail(n, FOCM[id])); if (id) n.focus = { id, prog: 0 };
+  }
+}
+function aiDiplomacy(n) {
+  const id = n.id;
+  if (n.ai === 'aggressive') {
+    if (n.justify || G.day < 120) return;
+    const wars = enemiesOf(id); if (wars.length >= 2 || (wars.length === 1 && Math.random() < .75)) return;
+    const my = natPower(id); let best = null, br = 0;
+    const df = DF();
+    for (const o of neighborsOf(id)) {
+      if (atWar(id, o) || allied(id, o)) continue;
+      if (o === G.player && G.day < df.grace) continue;
+      if (truceLeft(id, o)) continue;
+      // 別の拡張志向の国がすでに戦争中か準備中の相手は狙わない（袋だたきを防ぐ）
+      if (!df.dogpile && NAT.some(a => a.alive && a.id !== id && a.id !== G.player && a.ai === 'aggressive' && (atWar(a.id, o) || (a.justify && a.justify.target === o)))) continue;
+      const their = natPower(o) + alliesOf(o).reduce((s, a) => s + natPower(a) * .6, 0), r = my / (their + 1);
+      if (r > br) { br = r; best = o; }
+    }
+    if (best !== null && br > (best === G.player ? 1.3 : 1.15)) {
+      const vsPlayer = best === G.player;
+      n.justify = { target: best, days: vsPlayer ? df.prepDays : 30 };
+      log(`${n.name}が${NAT[best].name}への戦争目標の正当化を始めた`, vsPlayer ? 'bad' : 'info');
+      if (vsPlayer && df.warn) { G.paused = true; toast(`${n.name}が戦争の準備を始めました。${df.prepDays}日後に攻めてきます`, 'war'); }
+    }
+  } else {
+    for (const a of NAT.filter(o => o.alive && o.ai === 'aggressive' && o.id !== id && !allied(id, o.id) && !atWar(id, o.id) && !truceLeft(id, o.id))) {
+      if (!neighborsOf(id).includes(a.id)) continue;
+      const victims = enemiesOf(a.id).filter(v => v !== id && (v === G.player ? DF().help : NAT[v].ai !== 'aggressive'));
+      if (victims.length && Math.random() < .2) { makeAlliance(id, victims[0]); declareWar(id, a.id); return; }
+    }
+  }
+}
+
+// ================= 進行 =================
+// 勝利条件：覇権（大陸の州の HEGEMONY 以上を支配）か、
+// 同盟（どこか1国が滅び、残る国がすべて同盟国で、自国が大陸で一番大きい）
+const HEGEMONY = .5;
+function victoryState() {
+  const me = G.player, cnt = new Map(); for (const p of P) cnt.set(p.ctrl, (cnt.get(p.ctrl) || 0) + 1);
+  const held = cnt.get(me) || 0, rivals = NAT.filter(n => n.alive && n.id !== me);
+  const largest = rivals.every(o => (cnt.get(o.id) || 0) < held), someDead = NAT.some(n => !n.alive), allied_ = rivals.filter(o => allied(me, o.id)).length;
+  return { held, total: P.length, share: held / P.length, largest, someDead, allied: allied_, rivals: rivals.length,
+    hegemony: held / P.length >= HEGEMONY, alliance: someDead && allied_ === rivals.length && largest };
+}
+function dailyTick() {
+  G.day++;
+  for (const n of NAT) if (n.alive) economy(n);
+  moveAndFight();
+  navalTick();
+  normalizeDivs();
+  joinTick();
+  for (const n of NAT) if (n.alive && !G.over) checkCapitulation(n);
+  if (G.over) return;
+  for (const n of NAT) {
+    if (!n.alive || n.id === G.player) continue;
+    if ((G.day + n.id) % 2 === 0) aiMilitary(n);
+    if ((G.day + n.id) % 5 === 0) aiEconomy(n);
+    if ((G.day + n.id) % 10 === 0) aiDiplomacy(n);
+    if ((G.day + n.id) % 3 === 0) aiNavy(n);
+    if ((G.day + n.id) % 10 === 5) aiInvasion(n);
+  }
+  if (G.day % PEACE.check === 0) aiPeace();
+  if (G.day % 10 === 3) peaceOffers();
+  if (G.running && G.player >= 0) { const v = victoryState(); if (v.hegemony) endGame(true, 'hegemony'); else if (v.alliance) endGame(true, 'alliance'); }
+  if (G.day % 30 === 0) save(true);
+}
+
+// ================= 保存 =================
+function serialize() {
+  return { v: 1, seed: G.seed, day: G.day, player: G.player, uid: G.uid, speed: G.speed, diff: G.diff, wars: [...G.wars], allies: [...G.allies], warStart: G.warStart, truce: G.truce, offerCD: G.offerCD, log: G.log.slice(-40),
+    nat: NAT.map(n => ({ alive: n.alive, eq: n.eq, lines: n.lines, mp: n.mp, queue: n.queue, build: n.build, research: n.research, techs: n.techs, focus: n.focus, focusDone: n.focusDone, justify: n.justify, divSeq: n.divSeq, deployTo: n.deployTo || 0, wargoals: n.wargoals, shipQ: n.shipQ })),
+    prov: P.map(p => [p.owner, p.ctrl, p.civ, p.mil, p.fort, p.terrain, p.port]), sid: G.sid,
+    ships: ships.map(s => ({ ...s, path: [...s.path] })), convoys: convoys.map(c => ({ ...c, path: [...c.path], units: c.units.map(u => ({ ...u, path: [] })) })), units: units.map(u => ({ id: u.id, nat: u.nat, type: u.type, prov: u.prov, div: u.div, joinDiv: u.joinDiv || 0, hp: u.hp, org: u.org, path: u.path, prog: u.prog, attacking: u.attacking })) };
+}
+function restore(s) {
+  newGame(s.seed);
+  Object.assign(G, { day: s.day, player: s.player, uid: s.uid, speed: s.speed || 1, diff: DIFF[s.diff] ? s.diff : 'normal', wars: new Set(s.wars), allies: new Set(s.allies), warStart: { ...(s.warStart || {}) }, truce: { ...(s.truce || {}) }, offerCD: { ...(s.offerCD || {}) }, offer: null, log: s.log || [], running: true, paused: true });
+  s.nat.forEach((d, i) => { const n = NAT[i]; Object.assign(n, JSON.parse(JSON.stringify(d))); n.eq.ship = n.eq.ship || 0; n.lines.ship = n.lines.ship || 0; n.shipQ = n.shipQ || []; recompute(n); });
+  s.prov.forEach((d, i) => { const p = P[i]; [p.owner, p.ctrl, p.civ, p.mil, p.fort] = d; if (d[5]) p.terrain = d[5]; if (d[6] !== undefined) p.port = d[6]; });
+  if (s.ships) { ships = s.ships.map(x => ({ ...x, path: [...x.path] })); convoys = (s.convoys || []).map(c => ({ ...c, path: [...c.path] })); G.sid = s.sid || 1; }
+  units = s.units.map(u => ({ ...u, path: [...u.path] }));
+  { // 古いセーブには師団がないので、同じ州の大隊をまとめる
+    for (const n of NAT) n.divSeq = Math.max(n.divSeq || 0, ...units.concat(convoys.flatMap(c => c.units)).filter(u => u.nat === n.id && u.div != null).map(u => u.div), 0);
+    groupDivs(units.filter(u => u.div == null)); for (const c of convoys) { const id = newDivId(NAT[c.nat]); c.units.forEach(u => { if (u.div == null) u.div = id; }); }
+  }
+  for (const n of NAT) for (const b of n.build) if (b.id == null) b.id = G.sid++;
+  for (const k of G.wars) if (G.warStart[k] == null) G.warStart[k] = G.day; // 古いセーブ
+  NAT.forEach(economyStats); mapDirty = true;
+}
+function save(quiet) {
+  if (!G || !G.running || G.over) return;
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(serialize())); if (!quiet) toast('保存しました'); }
+  catch (e) { if (!quiet) toast('このブラウザでは保存できませんでした'); }
+}
+function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); return s && s.v === 1 ? s : null; } catch (e) { return null; } }
+
+// ================= 描画 =================
+const cv = document.getElementById('map'), ctx = cv.getContext('2d');
+const off = document.createElement('canvas'), offc = off.getContext('2d');
+let img = null, CW = 0, CH = 0, DPR = 1;
+const view = { x: 0, y: 0, s: 1 };
+// 地図は変化があったときだけ描き直す（止まっている間に毎フレーム描かない）
+let needDraw = true;
+let natB = null;
+function renderMapImage() {
+  const { MW, MH, pix, provBorder, coast, seaDist, zpix, zoneBorder } = M, N = MW * MH;
+  if (off.width !== MW) { off.width = MW; off.height = MH; img = offc.createImageData(MW, MH); natB = new Uint8Array(N); }
+  natB.fill(0);
+  for (let i = 0; i < N; i++) {
+    const p = pix[i]; if (p < 0) continue;
+    if (i % MW < MW - 1) { const r = pix[i + 1]; if (r >= 0 && P[r].ctrl !== P[p].ctrl) { natB[i] = 1; natB[i + 1] = 1; } }
+    if (i < N - MW) { const d = pix[i + MW]; if (d >= 0 && P[d].ctrl !== P[p].ctrl) { natB[i] = 1; natB[i + MW] = 1; } }
+  }
+  const shade = { plains: 1, forest: .9, hills: .94, mountain: .84, marsh: .93, urban: 1.06 };
+  const pr = [], pg = [], pb = [], orr = [], og = [], ob = [], occ = [], ter = [];
+  const pickNat = !G.running && startPick >= 0 ? startPick : -1;
+  for (const p of P) {
+    const c = NAT[p.ctrl].color, o = NAT[p.owner].color;
+    let f = shade[p.terrain];
+    if (pickNat >= 0 && p.ctrl !== pickNat) f *= .55;
+    if (p.id === sel.prov) f *= 1.28;
+    pr[p.id] = c[0] * f; pg[p.id] = c[1] * f; pb[p.id] = c[2] * f;
+    orr[p.id] = o[0] * f; og[p.id] = o[1] * f; ob[p.id] = o[2] * f;
+    occ[p.id] = p.owner !== p.ctrl; ter[p.id] = TERR_I.indexOf(p.terrain);
+  }
+  const d = img.data;
+  for (let i = 0, j = 0; i < N; i++, j += 4) {
+    const p = pix[i];
+    if (p < 0) {
+      const t = Math.min(1, seaDist[i] / 24);
+      let add = 0; const z = zpix[i];
+      if (z >= 0) { if (zoneBorder[i] && (i % 3 === 0)) add = 16; if (z === sel.zone) add += 14; }
+      d[j] = 52 - 20 * t + add; d[j + 1] = 74 - 26 * t + add; d[j + 2] = 84 - 24 * t + add; d[j + 3] = 255; continue;
+    }
+    const x = i % MW, y = (i / MW) | 0;
+    let r, g, b;
+    if (occ[p] && (x + y) % 10 < 4) { r = orr[p]; g = og[p]; b = ob[p]; } else { r = pr[p]; g = pg[p]; b = pb[p]; }
+    const tt = ter[p];
+    let k = 1;
+    if (tt === 1 && (x * 7 + y * 13) % 29 === 0) k = .7;
+    else if (tt === 2 && (x - y + 900) % 11 === 0 && y % 4 < 2) k = .82;
+    else if (tt === 3 && ((x + y) % 7 === 0 || (x - y + 900) % 7 === 0) && (x + y) % 14 < 7) k = .74;
+    else if (tt === 4 && y % 6 === 0 && x % 6 < 3) k = .78;
+    else if (tt === 5 && x % 6 < 2 && y % 6 < 2) k = 1.18;
+    r *= k; g *= k; b *= k;
+    if (natB[i]) { r = 26; g = 28; b = 24; }
+    else if (coast[i]) { r *= .45; g *= .45; b *= .45; }
+    else if (provBorder[i]) { r *= .72; g *= .72; b *= .72; }
+    d[j] = r; d[j + 1] = g; d[j + 2] = b; d[j + 3] = 255;
+  }
+  offc.putImageData(img, 0, 0);
+}
+function resize() {
+  const r = cv.getBoundingClientRect(); DPR = Math.min(2, window.devicePixelRatio || 1);
+  if (!r.width || !r.height) return;
+  const ocx = view.x + CW / 2 / view.s, ocy = view.y + CH / 2 / view.s, had = CW > 0 && CH > 0;
+  CW = r.width; CH = r.height;
+  cv.width = Math.max(1, Math.round(CW * DPR)); cv.height = Math.max(1, Math.round(CH * DPR)); needDraw = true;
+  if (!M) return;
+  if (!had) { fitView(); if (G && G.running) focusCapital(); }
+  else if (!G || !G.running) fitView();
+  else { view.x = ocx - CW / 2 / view.s; view.y = ocy - CH / 2 / view.s; }
+}
+function fitView() {
+  if (!M || !CW) return;
+  view.s = Math.min(CW / M.MW, CH / M.MH) * .98;
+  view.x = M.MW / 2 - CW / 2 / view.s; view.y = M.MH / 2 - CH / 2 / view.s; needDraw = true;
+}
+const SX = x => (x - view.x) * view.s, SY = y => (y - view.y) * view.s;
+const rgb = (c, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+function star(x, y, r) { ctx.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r; ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } ctx.closePath(); }
+function draw() {
+  if (!M || !CW) return;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = '#1C2A31'; ctx.fillRect(0, 0, CW, CH);
+  ctx.imageSmoothingEnabled = view.s < 1.5;
+  ctx.drawImage(off, SX(0), SY(0), M.MW * view.s, M.MH * view.s);
+  const zs = Math.min(1.25, Math.max(.75, view.s));
+  // 首都・都市
+  for (const p of P) {
+    if (p.vp < 10) continue;
+    const x = SX(p.lx), y = SY(p.ly) + 16 * zs;
+    if (p.vp >= 30 && NAT.some(n => n.cap === p.id && n.alive && P[n.cap].owner === n.id)) { star(x, y, 6 * zs); ctx.fillStyle = '#E9D59A'; ctx.fill(); ctx.strokeStyle = '#1a1a14'; ctx.lineWidth = 1; ctx.stroke(); }
+    else { ctx.beginPath(); ctx.arc(x, y, 3 * zs, 0, 7); ctx.fillStyle = '#E7E2D2'; ctx.fill(); ctx.strokeStyle = '#1a1a14'; ctx.stroke(); }
+  }
+  if (view.s > 1.35) {
+    ctx.font = `600 ${Math.round(10.5 * zs)}px "BIZ UDPGothic", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (const p of P) { const x = SX(p.lx), y = SY(p.ly) + 22 * zs; if (x < -50 || x > CW + 50 || y < -20 || y > CH + 20) continue; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(20,22,20,.75)'; ctx.strokeText(p.name, x, y); ctx.fillStyle = '#E7E2D2'; ctx.fillText(p.name, x, y); }
+  }
+  // 港と海域名
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `${Math.round(11 * zs)}px sans-serif`;
+  for (const p of P) {
+    if (!p.port) continue;
+    const x = SX(p.lx) + 14 * zs, y = SY(p.ly) + 16 * zs;
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(15,20,24,.85)'; ctx.strokeText('⚓', x, y); ctx.fillStyle = '#C6D8E0'; ctx.fillText('⚓', x, y);
+  }
+  if (view.s > 1.1) {
+    ctx.font = `italic 600 ${Math.round(11 * zs)}px "BIZ UDPGothic", sans-serif`; ctx.fillStyle = 'rgba(178,204,214,.75)';
+    for (const z of Z) ctx.fillText(z.name, SX(z.lx), SY(z.ly) + 22 * zs);
+  }
+  if (!G.running) return;
+  // 艦隊の航路（自国のみ）
+  for (const s of ships) {
+    if (s.nat !== G.player || !s.path.length) continue;
+    const on = sel.ships.has(s.id);
+    ctx.strokeStyle = on ? 'rgba(150,200,225,.95)' : 'rgba(150,200,225,.4)'; ctx.lineWidth = on ? 2.5 : 1.5; ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.moveTo(SX(Z[s.z].lx), SY(Z[s.z].ly)); for (const z of s.path) ctx.lineTo(SX(Z[z].lx), SY(Z[z].ly)); ctx.stroke(); ctx.setLineDash([]);
+  }
+  for (const c of convoys) {
+    if (c.nat !== G.player) continue;
+    ctx.strokeStyle = 'rgba(231,226,210,.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 4]);
+    ctx.beginPath(); ctx.moveTo(SX(Z[c.z].lx), SY(Z[c.z].ly)); for (const z of c.path) ctx.lineTo(SX(Z[z].lx), SY(Z[z].ly)); ctx.lineTo(SX(P[c.target].lx), SY(P[c.target].ly)); ctx.stroke(); ctx.setLineDash([]);
+  }
+  // 進軍の矢印（自国のみ）
+  for (const u of units) {
+    if (u.nat !== G.player || !u.path.length) continue;
+    const s = sel.units.has(u.id);
+    ctx.strokeStyle = s ? 'rgba(205,168,94,.95)' : 'rgba(231,226,210,.45)'; ctx.lineWidth = s ? 2.5 : 1.5; ctx.setLineDash(s ? [] : [5, 4]);
+    ctx.beginPath(); ctx.moveTo(SX(P[u.prov].lx), SY(P[u.prov].ly));
+    for (const pid of u.path) ctx.lineTo(SX(P[pid].lx), SY(P[pid].ly));
+    ctx.stroke(); ctx.setLineDash([]);
+    const last = P[u.path[u.path.length - 1]], prev = u.path.length > 1 ? P[u.path[u.path.length - 2]] : P[u.prov];
+    const ax = SX(last.lx), ay = SY(last.ly), ang = Math.atan2(ay - SY(prev.ly), ax - SX(prev.lx));
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax - 9 * Math.cos(ang - .45), ay - 9 * Math.sin(ang - .45)); ctx.lineTo(ax - 9 * Math.cos(ang + .45), ay - 9 * Math.sin(ang + .45)); ctx.closePath();
+    ctx.fillStyle = ctx.strokeStyle; ctx.fill();
+  }
+  // 戦闘
+  for (const b of G.battles) {
+    const p = P[b.pid];
+    if (b.zone !== undefined) { ctx.strokeStyle = 'rgba(216,102,77,.9)'; ctx.lineWidth = 3; ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.moveTo(SX(Z[b.zone].lx), SY(Z[b.zone].ly)); ctx.lineTo(SX(p.lx), SY(p.ly)); ctx.stroke(); ctx.setLineDash([]); }
+    for (const f of b.from) { ctx.strokeStyle = 'rgba(216,102,77,.9)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(SX(P[f].lx), SY(P[f].ly)); ctx.lineTo(SX(p.lx), SY(p.ly)); ctx.stroke(); }
+  }
+  // 師団の札
+  const stacks = new Map();
+  for (const u of units) {
+    const k = u.prov * 16 + u.nat; let s = stacks.get(k);
+    if (!s) { s = { prov: u.prov, nat: u.nat, n: 0, org: 0, orgM: 0, sel: 0, arm: 0 }; stacks.set(k, s); }
+    s.n++; s.org += u.org; s.orgM += UT[u.type].org; if (sel.units.has(u.id)) s.sel++; if (u.type === 'arm') s.arm++;
+  }
+  const perProv = new Map();
+  for (const s of stacks.values()) { if (!perProv.has(s.prov)) perProv.set(s.prov, []); perProv.get(s.prov).push(s); }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const [pid, list] of perProv) {
+    const p = P[pid]; const w = 30 * zs, h = 18 * zs;
+    list.sort((a, b) => (a.nat === G.player) - (b.nat === G.player));
+    list.forEach((s, i) => {
+      const x = SX(p.lx) - (list.length * (w + 3)) / 2 + i * (w + 3), y = SY(p.ly) - h / 2 - 2;
+      if (x < -40 || x > CW + 40 || y < -40 || y > CH + 40) return;
+      ctx.fillStyle = rgb(NAT[s.nat].color); ctx.fillRect(x, y, w, h);
+      ctx.lineWidth = s.sel ? 2.5 : 1; ctx.strokeStyle = s.sel ? '#F0CF7A' : '#111'; ctx.strokeRect(x, y, w, h);
+      ctx.fillStyle = '#121410'; ctx.fillRect(x, y + h, w, 4 * zs);
+      ctx.fillStyle = '#8CB466'; ctx.fillRect(x, y + h, w * Math.max(0, s.org / s.orgM), 4 * zs);
+      ctx.font = `700 ${Math.round(12 * zs)}px "IBM Plex Mono", monospace`;
+      ctx.fillStyle = '#fff'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.55)'; const label = (s.arm ? '◆' : '') + s.n;
+      ctx.strokeText(label, x + w / 2, y + h / 2 + 1); ctx.fillText(label, x + w / 2, y + h / 2 + 1);
+    });
+  }
+  // 艦隊・停泊艦・輸送船団
+  const pill = (x, y, w, h, col, label, on) => {
+    ctx.fillStyle = '#16252D'; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = rgb(col); ctx.fillRect(x, y, 5 * zs, h);
+    ctx.lineWidth = on ? 2.5 : 1; ctx.strokeStyle = on ? '#F0CF7A' : '#0A1013'; ctx.strokeRect(x, y, w, h);
+    ctx.font = `700 ${Math.round(11 * zs)}px "BIZ UDPGothic", sans-serif`; ctx.fillStyle = '#DCE8EC';
+    ctx.fillText(label, x + w / 2 + 2 * zs, y + h / 2 + 1);
+  };
+  const fleets = new Map(), docked = new Map();
+  for (const s of ships) {
+    const m = s.z >= 0 ? fleets : docked, k = (s.z >= 0 ? s.z : s.port) * 16 + s.nat;
+    let f = m.get(k); if (!f) { f = { loc: s.z >= 0 ? s.z : s.port, nat: s.nat, n: 0, hp: 0, hpM: 0, on: 0 }; m.set(k, f); }
+    f.n++; f.hp += s.hp; f.hpM += ST[s.type].hp; if (sel.ships.has(s.id)) f.on++;
+  }
+  const byLoc = new Map(); for (const f of fleets.values()) { if (!byLoc.has(f.loc)) byLoc.set(f.loc, []); byLoc.get(f.loc).push(f); }
+  for (const [z, list] of byLoc) {
+    const w = 38 * zs, h = 18 * zs;
+    list.forEach((f, i) => {
+      const x = SX(Z[z].lx) - (list.length * (w + 3)) / 2 + i * (w + 3), y = SY(Z[z].ly) - h / 2;
+      pill(x, y, w, h, NAT[f.nat].color, '艦' + f.n, f.on);
+      ctx.fillStyle = '#0A1013'; ctx.fillRect(x, y + h, w, 3 * zs); ctx.fillStyle = '#8FC3DA'; ctx.fillRect(x, y + h, w * f.hp / f.hpM, 3 * zs);
+    });
+  }
+  for (const f of docked.values()) {
+    if (f.nat !== G.player && !atWar(G.player, f.nat)) continue;
+    const p = P[f.loc], w = 30 * zs, h = 15 * zs;
+    pill(SX(p.lx) + 22 * zs, SY(p.ly) + 9 * zs, w, h, NAT[f.nat].color, '⚓' + f.n, f.on);
+  }
+  for (const c of convoys) {
+    const w = 36 * zs, h = 15 * zs, x = SX(Z[c.z].lx) - w / 2, y = SY(Z[c.z].ly) + 14 * zs;
+    pill(x, y, w, h, NAT[c.nat].color, '輸' + c.units.length, false);
+  }
+  for (const b of G.navBattles) {
+    const x = SX(Z[b.z].lx), y = SY(Z[b.z].ly) - 24 * zs;
+    ctx.beginPath(); ctx.arc(x, y, 10 * zs, 0, 7); ctx.fillStyle = '#10202A'; ctx.fill(); ctx.strokeStyle = '#8FC3DA'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.font = `${Math.round(12 * zs)}px sans-serif`; ctx.fillStyle = '#F0CF7A'; ctx.fillText('⚔', x, y + 1);
+  }
+  for (const b of G.battles) {
+    const p = P[b.pid], x = SX(p.lx), y = SY(p.ly) - 26 * zs;
+    ctx.beginPath(); ctx.arc(x, y, 10 * zs, 0, 7); ctx.fillStyle = '#1b1a16'; ctx.fill(); ctx.strokeStyle = '#D8664D'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.font = `${Math.round(12 * zs)}px sans-serif`; ctx.fillStyle = '#F0CF7A'; ctx.fillText('⚔', x, y + 1);
+    const bw = 34 * zs, fr = b.A / (b.A + b.D + .01);
+    ctx.fillStyle = rgb(NAT[b.dn].color); ctx.fillRect(x - bw / 2, y + 12 * zs, bw, 4);
+    ctx.fillStyle = rgb(NAT[b.an].color); ctx.fillRect(x - bw / 2, y + 12 * zs, bw * fr, 4);
+  }
+}
+
+// ================= 入力 =================
+const pointers = new Map(); let drag = null, pinch = null;
+const provAt = (cx, cy) => { const mx = Math.floor(cx / view.s + view.x), my = Math.floor(cy / view.s + view.y); if (mx < 0 || my < 0 || mx >= M.MW || my >= M.MH) return -1; return M.pix[my * M.MW + mx]; };
+const zoneAt = (cx, cy) => { const mx = Math.floor(cx / view.s + view.x), my = Math.floor(cy / view.s + view.y); if (mx < 0 || my < 0 || mx >= M.MW || my >= M.MH) return -1; return M.zpix[my * M.MW + mx]; };
+function clampView() { const minS = Math.min(CW / M.MW, CH / M.MH) * .6; view.s = Math.max(minS, Math.min(8, view.s)); }
+function zoomAt(cx, cy, f) { const mx = cx / view.s + view.x, my = cy / view.s + view.y; view.s *= f; clampView(); view.x = mx - cx / view.s; view.y = my - cy / view.s; needDraw = true; }
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId);
+  const r = cv.getBoundingClientRect(); pointers.set(e.pointerId, { x: e.clientX - r.left, y: e.clientY - r.top });
+  if (pointers.size === 1) drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: false, button: e.button };
+  else if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), s: view.s }; drag = null; }
+});
+cv.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) return;
+  const r = cv.getBoundingClientRect(); pointers.set(e.pointerId, { x: e.clientX - r.left, y: e.clientY - r.top });
+  if (pinch && pointers.size === 2) {
+    const [a, b] = [...pointers.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+    zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, (pinch.s * d / pinch.d) / view.s);
+  } else if (drag) {
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.hypot(dx, dy) > 5) drag.moved = true;
+    if (drag.moved) { view.x = drag.vx - dx / view.s; view.y = drag.vy - dy / view.s; needDraw = true; }
+  }
+});
+function endPointer(e) {
+  if (!pointers.has(e.pointerId)) return;
+  const pt = pointers.get(e.pointerId); pointers.delete(e.pointerId);
+  if (drag && !drag.moved && e.type === 'pointerup') {
+    const pid = provAt(pt.x, pt.y), zid = pid < 0 ? zoneAt(pt.x, pt.y) : -1;
+    if (drag.button === 2) rightClick(pid, zid); else leftClick(pid, e.shiftKey, zid);
+  }
+  if (pointers.size < 2) pinch = null;
+  if (!pointers.size) drag = null;
+}
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * .0015)); }, { passive: false });
+document.getElementById('z-in').onclick = () => zoomAt(CW / 2, CH / 2, 1.35);
+document.getElementById('z-out').onclick = () => zoomAt(CW / 2, CH / 2, 1 / 1.35);
+document.getElementById('z-fit').onclick = fitView;
+
+function leftClick(pid, shift, zid = -1) {
+  if (!G.running) { if (pid >= 0) { startPick = P[pid].ctrl; mapDirty = true; renderStart(); } return; }
+  if (pid < 0) {
+    if (zid >= 0) {
+      const mine = ships.filter(s => s.nat === G.player && s.z === zid);
+      if (mine.length) { if (!shift) sel.ships.clear(); sel.units.clear(); mine.forEach(s => sel.ships.add(s.id)); }
+      else if (sel.ships.size) orderShips(zid);
+      else if (sel.units.size) toast('海上輸送は、港にいる師団を選んで行き先の沿岸の州をクリックします');
+      sel.zone = zid;
+    } else { sel.zone = -1; if (!shift) { sel.units.clear(); sel.ships.clear(); } }
+    sel.prov = -1; mapDirty = true; uiDirty = true; return;
+  }
+  sel.zone = -1;
+  const mine = units.filter(u => u.nat === G.player && u.prov === pid);
+  if (sel.ships.size && !mine.length) { const p = P[pid]; if (p.port && allied(G.player, p.ctrl)) orderDock(pid); }
+  else if (mine.length) { if (!shift) sel.units.clear(); sel.ships.clear(); mine.forEach(u => sel.units.add(u.id)); }
+  else if (sel.units.size) orderMove(pid);
+  sel.prov = pid; mapDirty = true; uiDirty = true;
+}
+function rightClick(pid, zid = -1) {
+  if (!G.running) return;
+  if (sel.ships.size) { if (zid >= 0) orderShips(zid); else if (pid >= 0 && P[pid].port && allied(G.player, P[pid].ctrl)) orderDock(pid); }
+  else if (sel.units.size && pid >= 0) orderMove(pid);
+  uiDirty = true;
+}
+const selShips = () => [...sel.ships].map(id => ships.find(s => s.id === id)).filter(Boolean);
+function orderShips(z) { let ok = 0; for (const s of selShips()) if (sendShip(s, [z])) ok++; if (!ok) toast('その海域へは行けません'); }
+function orderDock(pid) { for (const s of selShips()) if (s.port !== pid) sendShip(s, P[pid].zones, pid); toast(`${P[pid].name}港へ向かいます`); }
+function orderConvoy(pid, list) {
+  const groups = new Map(); for (const u of list) { if (!groups.has(u.prov)) groups.set(u.prov, []); groups.get(u.prov).push(u); }
+  let ok = 0, noPort = 0;
+  for (const [from, g] of groups) {
+    if (from === pid) continue;
+    if (!P[from].port || !allied(G.player, P[from].ctrl)) { noPort += g.length; continue; }
+    if (makeConvoy(G.player, g, from, pid)) ok += g.length;
+  }
+  if (ok) toast(`${ok}個大隊が海上輸送で${P[pid].name}へ向かいます`);
+  else if (noPort) toast('海上輸送は港のある州からしか出発できません');
+  else toast('安全な航路がありません（敵艦隊のいる海域は通れません）');
+  return ok;
+}
+function orderMove(pid) {
+  let ok = 0; const failed = [];
+  detach([...sel.units].map(uById).filter(u => u && u.prov !== pid));
+  for (const id of sel.units) { const u = uById(id); if (u) u.joinDiv = 0; }
+  for (const id of sel.units) {
+    const u = uById(id); if (!u) continue;
+    if (u.prov === pid) { u.path = []; u.attacking = -1; u.prog = 0; continue; }
+    const path = findPath(G.player, u.prov, pid, 'attack');
+    if (path) { u.path = path; u.prog = 0; u.attacking = -1; ok++; } else failed.push(u);
+  }
+  const fail = failed.length;
+  if (fail && canEnter(G.player, pid) && P[pid].zones.length && failed.some(u => P[u.prov].port)) { orderConvoy(pid, failed); return; }
+  if (fail && !ok) toast(atWar(G.player, P[pid].ctrl) || allied(G.player, P[pid].ctrl) ? 'そこまでの道がありません' : '戦争していない国の領土には入れません');
+}
+
+// ================= UI =================
+const $ = id => document.getElementById(id);
+const panel = $('panel'), ctxEl = $('ctx');
+let tab = 'ov', uiDirty = true, pressing = false, confirmNew = false;
+let toastT;
+function toast(msg, kind) { const t = $('toast'); t.textContent = msg; t.className = 'toast show' + (kind ? ' ' + kind : ''); clearTimeout(toastT); toastT = setTimeout(() => { t.className = 'toast'; }, 3200); }
+document.addEventListener('pointerdown', e => { if (e.target.closest('#panel, #ctx, #sheet')) pressing = true; });
+window.addEventListener('pointerup', () => { if (pressing) { pressing = false; } });
+
+function meter(v, cls) { return `<div class="meter ${cls}"><span style="width:${Math.max(0, Math.min(100, v * 100)).toFixed(1)}%"></span></div>`; }
+function updateBar() {
+  if (!G) return;
+  $('b-date').textContent = dateStr(G.day);
+  const pl = $('b-play'); pl.textContent = G.paused ? '▶' : '❚❚'; pl.classList.toggle('paused', G.paused); pl.setAttribute('aria-label', G.paused ? '時間を進める' : '一時停止');
+  $('b-spdv').textContent = `${G.speed < 1 ? G.speed.toFixed(2) : G.speed.toFixed(1)} 日/秒`;
+  document.querySelectorAll('#b-pre button').forEach(b => b.setAttribute('aria-pressed', Math.abs(+b.dataset.s - G.speed) < .01));
+  if (!G.running) { $('b-nat').innerHTML = ''; $('b-res').innerHTML = '<span class="muted">国を選んでください</span>'; return; }
+  const n = ME();
+  $('b-nat').innerHTML = `<span class="chip" style="background:${rgb(n.color)}"></span>${esc(n.name)}`;
+  const div = units.filter(u => u.nat === n.id).length, ndiv = new Set(units.filter(u => u.nat === n.id).map(u => u.div)).size;
+  $('b-res').innerHTML = `<span><i>民需</i><b>${n.avail}/${n.civ}</b></span><span><i>軍需</i><b>${n.milT}</b></span><span><i>人的資源</i><b>${fmtMP(n.mp)}</b></span><span><i>師団</i><b>${ndiv}</b></span><span><i>大隊</i><b>${div}</b>${n.queue.length ? `<i> +${n.queue.length}</i>` : ''}</span><span><i>艦艇</i><b>${ships.filter(s => s.nat === n.id).length}</b></span><span><i>戦争</i><b>${enemiesOf(n.id).length}</b></span>${n.blockade ? `<span style="color:var(--danger)"><i style="color:inherit">封鎖</i><b style="color:inherit">-${pct(n.blockade)}</b></span>` : ''}`;
+  renderGuide();
+}
+const GUIDE_STEPS = [
+  { id: 're', tab: 're', title: '研究を始める', desc: '研究タブで技術を1つ選びます。', done: n => n.techs.length > 0 || n.research.some(Boolean) },
+  { id: 'pr', tab: 'pr', title: '軍需工場を割り当てる', desc: '生産タブで未割当工場を装備に回します。', done: n => assigned(n) > 0 },
+  { id: 'train', tab: 'pr', title: '大隊を訓練する', desc: '生産タブから歩兵大隊などを訓練します。', done: n => n.queue.length > 0 || units.filter(u => u.nat === n.id).length > (G.guideUnitBaseline ?? 0) },
+];
+let guideDismissed = false;
+function renderGuide() {
+  const el = $('guide');
+  if (!el || !G || !G.running || G.over || guideDismissed) { if (el) el.hidden = true; return; }
+  const n = ME(), progress = GUIDE_STEPS.map(s => ({ ...s, complete: s.done(n) }));
+  if (progress.every(s => s.complete)) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = `<div class="guide-head"><b>最初の一歩</b><button type="button" class="btn" data-guide="hide" aria-label="案内を閉じる">×</button></div>
+    <ol>${progress.map((s, i) => `<li class="${s.complete ? 'done' : ''}"><span>${s.complete ? '✓ ' : `${i + 1}. `}${s.title}</span>${s.complete ? '<span class="muted">完了</span>' : `<button type="button" class="btn" data-guide="${s.tab}">開く</button>`}<small>${s.desc}</small></li>`).join('')}</ol>
+    <p class="tip">準備ができたら▶で時間を進めましょう。</p>`;
+}
+$("guide").addEventListener('click', e => {
+  const b = e.target.closest('[data-guide]'); if (!b) return;
+  if (b.dataset.guide === 'hide') { guideDismissed = true; renderGuide(); return; }
+  tab = b.dataset.guide; renderPanel(true); $("panel").scrollTop = 0;
+});
+function natName(id) { const n = NAT[id]; return `<span class="chip" style="background:${rgb(n.color)}"></span> ${esc(n.name)}`; }
+
+// 難易度の切り替え（開始画面と国家タブで共用）
+function diffPicker(mode) {
+  const attr = k => mode === 'act' ? `data-act="diff" data-arg="${k}"` : `data-diff="${k}"`;
+  return `<div class="row seg" role="group" aria-label="難易度">${Object.entries(DIFF).map(([k, d]) => `<button type="button" class="btn" ${attr(k)} aria-pressed="${G.diff === k}">${d.name}</button>`).join('')}</div>
+  <p class="tip">${DF().desc}</p>`;
+}
+function victoryBox() {
+  const v = victoryState(), yes = b => b ? '<span style="color:var(--ok)">達成</span>' : 'まだ';
+  return `<h3>勝利への道</h3>
+  <dl class="kv"><dt>覇権：支配している州</dt><dd>${v.held}/${v.total}（${pct(v.share)}／目標 ${pct(HEGEMONY)}）</dd>
+    <dt>同盟：滅んだ国がある</dt><dd>${yes(v.someDead)}</dd>
+    <dt>同盟：残る国がすべて同盟国</dt><dd>${v.allied}/${v.rivals}</dd>
+    <dt>同盟：大陸で一番大きい国</dt><dd>${yes(v.largest)}</dd></dl>`;
+}
+function tabOverview(n) {
+  const div = units.filter(u => u.nat === n.id), en = enemiesOf(n.id), al = alliesOf(n.id);
+  const news = G.log.slice(-14).reverse().map(l => `<li><span class="dt">${dateStr(l.d).replace(/^\d+年/, '')}</span><span class="${l.k}">${esc(l.t)}</span></li>`).join('');
+  return `<div><h2>${esc(n.name)}</h2><p class="muted">${n.ai === 'aggressive' ? '拡張志向の国。周辺国から警戒されやすい' : '防衛志向の国'} · 首都 ${esc(P[n.cap].name)}</p></div>
+  <dl class="kv">
+    <dt>州（占領地）</dt><dd>${n.own}（${n.occ}）</dd>
+    <dt>民需工場</dt><dd>${n.civ}（消費財 ${n.cgF}）</dd>
+    <dt>軍需工場</dt><dd>${n.milT}</dd>
+    <dt>人的資源</dt><dd>${fmtMP(n.mp)}</dd>
+    <dt>師団・大隊（訓練中）</dt><dd>${new Set(div.map(u => u.div)).size}・${div.length}（${n.queue.length}）</dd>
+    <dt>陸軍の戦力</dt><dd>${fmt(natPower(n.id))}</dd>
+    <dt>交戦国</dt><dd>${en.length ? en.map(e => esc(NAT[e].name)).join('、') : 'なし'}</dd>
+    <dt>同盟国</dt><dd>${al.length ? al.map(e => esc(NAT[e].name)).join('、') : 'なし'}</dd>
+  </dl>
+  ${victoryBox()}
+  <h3>最近の出来事</h3><ol class="news">${news || '<li class="muted">まだ何も起きていません</li>'}</ol>
+  <h3>難易度</h3>
+  ${diffPicker('act')}
+  <h3>遊び方</h3>
+  <p class="tip"><b style="color:var(--ink)">勝利条件</b>：大陸の州の半分以上を支配する（覇権）か、どこか1国が滅び、残る国がすべて同盟国で、自国が大陸で一番大きい国になる（同盟）。<b style="color:var(--ink)">敗北</b>：自国が降伏すること。</p>
+  <div class="row"><button type="button" class="btn" data-act="manual">遊び方と用語集を開く</button></div>
+  <ul class="help">
+    <li><b>時間</b>：▶で進行、1〜5かスライダーで速さを自由に。スペースキーで一時停止</li>
+    <li><b>師団</b>：地図の数字の札をクリックで選択 → 移動先の州をクリック（右クリックでも可）。Shiftで追加選択。左下のパネルで大隊ごとに選び、師団を分けたりまとめたりできる</li>
+    <li><b>戦闘</b>：敵のいる州へ進むと戦闘。組織力（札の緑の線）が尽きた側が退却。退路がなければ壊滅</li>
+    <li><b>生産</b>：軍需工場を装備に割り当て、装備と人的資源で大隊を訓練</li>
+    <li><b>建設</b>：民需工場が工場や要塞を建てる。地図で州を選ぶとその州に建設できる</li>
+    <li><b>海軍</b>：海の艦隊（艦の札）を選んで海域をクリックで移動。港のある自国の州をクリックで入港・修理。港にいる師団は海の向こうの沿岸州を指定すると海上輸送で上陸作戦</li>
+    <li><b>制海</b>：敵艦隊が優勢な海域では輸送船団が沈む。自国沿岸の海域を敵に押さえられると海上封鎖で生産が落ちる</li>
+    <li><b>戦争</b>：外交タブで戦争目標を正当化（30日）してから宣戦。首都を落とし領土の半分を占領すると降伏</li>
+  </ul>
+  <div class="row"><button type="button" class="btn" data-act="save">保存する</button>
+  ${confirmNew ? '<span class="muted">今のゲームを捨てますか？</span><button type="button" class="btn warn" data-act="newgame">新しく始める</button><button type="button" class="btn" data-act="cancelNew">やめる</button>' : '<button type="button" class="btn" data-act="askNew">新しいゲーム</button>'}</div>`;
+}
+// 自国の師団の一覧。押すとその師団を選び、地図をその州へ動かす
+function tabArmy(n) {
+  const g = new Map(); for (const u of units) if (u.nat === n.id) { if (!g.has(u.div)) g.set(u.div, []); g.get(u.div).push(u); }
+  const divs = [...g].sort((a, b) => a[0] - b[0]), total = divs.reduce((t, [, l]) => t + l.length, 0);
+  const avg = (l, k) => l.reduce((t, u) => t + u[k] / UT[u.type][k], 0) / l.length;
+  const rows = divs.map(([id, l]) => {
+    const u0 = l[0], st = l.some(u => u.attacking >= 0) ? '戦闘中' : l.some(u => u.joinDiv) ? `${divName(l.find(u => u.joinDiv).joinDiv)}へ合流に向かう` : u0.path.length ? `${P[u0.path[u0.path.length - 1]].name}へ移動中` : '待機';
+    const tgt = n.deployTo === id;
+    return `<div class="item"><div><div class="t">${divName(id)} <span class="muted">${divComp(l)}</span></div><div class="d">${esc(P[u0.prov].name)} · ${esc(st)}</div></div>
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="goDiv" data-arg="${id}">選ぶ</button><button type="button" class="btn" data-act="deployTo" data-arg="${id}" aria-pressed="${tgt}">${tgt ? '★ 配属先' : '配属先にする'}</button></div>
+      <div class="bars" style="grid-column:1/-1">${meter(avg(l, 'hp'), 'm-hp')}${meter(avg(l, 'org'), 'm-org')}</div></div>`;
+  }).join('');
+  const sea = convoys.filter(c => c.nat === n.id).map(c => `<div class="item"><div><div class="t">輸送船団 <span class="muted">${c.units.length}大隊</span></div><div class="d">${esc(Z[c.z].name)} → ${esc(P[c.target].name)}</div></div></div>`).join('');
+  return `<div><h2>陸軍</h2><p class="muted">師団 ${divs.length} · 大隊 ${total} · 訓練中 ${n.queue.length} · 戦力 ${fmt(natPower(n.id))}</p></div>
+  ${deployLine(n)}
+  <div class="list">${rows || '<p class="muted">師団がありません</p>'}${sea}</div>
+  <p class="tip">「選ぶ」でその師団を選び、地図をその州へ動かします。「配属先にする」と、訓練した大隊がその師団へ合流しに向かいます。白い線＝兵力、緑の線＝組織力（師団の平均）</p>`;
+}
+// 訓練した大隊がどこへ行くかの一行（陸軍タブと生産タブで共用）
+function deployLine(n) {
+  return `<p class="tip">訓練した大隊の配属先：<b style="color:var(--ink)">${n.deployTo ? divName(n.deployTo) : '首都で新しい師団'}</b>${n.deployTo ? ' <button type="button" class="btn" data-act="deployTo" data-arg="0">新しい師団にする</button>' : '（陸軍タブで師団を選べます）'}</p>`;
+}
+function tabProduction(n) {
+  const unassigned = n.milT - assigned(n);
+  const lines = Object.entries(EQ).map(([k, e]) => {
+    const locked = (k === 'tank' && !n.techs.includes('arm1')) || (k === 'ship' && !hasPort(n));
+    return `<div class="item${locked ? ' locked' : ''}"><div><div class="t">${e.name} <span class="num muted">${fmt(n.eq[k])}</span></div><div class="d">${locked ? (k === 'ship' ? '港がないと造船できません' : '研究「戦車 I」で解禁') : `+${(n.lines[k] * e.rate * n.mod.prod * (1 - (n.blockade || 0))).toFixed(1)}/日 · 工場1つで ${e.rate}/日`}</div></div>
+      <div class="stepper"><button type="button" class="btn" data-act="line" data-arg="${k}" data-d="-1" ${n.lines[k] <= 0 ? 'disabled' : ''} aria-label="${e.name}の工場を減らす">−</button><b>${n.lines[k]}</b><button type="button" class="btn" data-act="line" data-arg="${k}" data-d="1" ${unassigned <= 0 || locked ? 'disabled' : ''} aria-label="${e.name}の工場を増やす">＋</button></div></div>`;
+  }).join('');
+  const train = Object.entries(UT).map(([k, t]) => {
+    const locked = t.req && !n.techs.includes(t.req);
+    const cost = Object.entries(t.cost).map(([e, v]) => `${EQ[e].name} ${v}`).join('・') + ` · 人員 ${fmtMP(t.mp)}`;
+    return `<div class="item${locked ? ' locked' : ''}"><div><div class="t">${t.name}</div><div class="d">攻 ${t.atk} / 防 ${t.def} / 速 ${t.speed} · ${t.days}日<br>${locked ? '研究「戦車 I」で解禁' : cost}</div></div>
+      <button type="button" class="btn primary" data-act="train" data-arg="${k}" ${canTrain(n, k) ? '' : 'disabled'}>訓練</button></div>`;
+  }).join('');
+  const q = n.queue.map(qd => `<div class="item"><div class="t">${UT[qd.type].name}</div><span class="num muted">あと${qd.days}日</span>${meter(1 - qd.days / UT[qd.type].days, 'm-prog')}</div>`).join('');
+  return `<div><h2>生産</h2><p class="muted">軍需工場 ${n.milT}${n.blockade ? ` · <span style="color:var(--danger)">海上封鎖で生産 -${pct(n.blockade)}</span>` : ''}${unassigned > 0 ? ` · <span style="color:var(--brass)">未割当 ${unassigned}</span>` : ''}</p></div>
+  <div class="list">${lines}</div><h3>大隊の訓練</h3>${deployLine(n)}<div class="list">${train}</div>
+  ${q ? `<h3>訓練中</h3><div class="list">${q}</div>` : ''}`;
+}
+function tabBuild(n) {
+  const cp = n.avail * 5 * n.mod.build;
+  const q = n.build.map((b, i) => {
+    const per = Math.min(50 * n.mod.build, Math.max(0, cp - n.build.slice(0, i).length * 50 * n.mod.build));
+    const eta = per > 0 ? Math.ceil((COST[b.kind] - b.prog) / per) + '日' : '待機中';
+    return `<div class="item"><div><div class="t">${BNAME[b.kind]}</div><div class="d">${esc(P[b.prov].name)} · ${eta}</div></div><button type="button" class="btn" data-act="cancelBuild" data-arg="${b.id}" aria-label="建設を取り消す">×</button>${meter(b.prog / COST[b.kind], 'm-prog')}</div>`;
+  }).join('');
+  const sp = bestBuildProv(n);
+  return `<div><h2>建設</h2><p class="muted">民需工場 ${n.civ} のうち ${n.cgF} は消費財に回り、${n.avail} が建設に使えます（建設力 ${Math.round(cp)}/日、1件あたり最大 ${Math.round(50 * n.mod.build)}/日）</p></div>
+  <div class="row"><button type="button" class="btn primary" data-act="build" data-arg="civ" ${sp ? '' : 'disabled'}>民需工場を建設</button><button type="button" class="btn primary" data-act="build" data-arg="mil" ${sp ? '' : 'disabled'}>軍需工場を建設</button></div>
+  <p class="tip">空きのある後方の州に自動で建てます。地図で州を選ぶと、その州を指定して工場や要塞を建てられます。民需工場 ${COST.civ} / 軍需工場 ${COST.mil} / 要塞 ${COST.fort}</p>
+  <h3>建設中</h3><div class="list">${q || '<p class="muted">建設中のものはありません</p>'}</div>`;
+}
+function tabResearch(n) {
+  const slots = n.research.map((r, i) => r ? `<div class="item"><div><div class="t">${TECHM[r.id].name}</div><div class="d">あと${Math.ceil((TECHM[r.id].days - r.prog) / n.mod.research)}日</div></div><span class="muted">枠${i + 1}</span>${meter(r.prog / TECHM[r.id].days, 'm-prog')}</div>` : `<div class="item"><div class="t muted">空き（下から選択）</div></div>`).join('');
+  const free = n.research.some(r => !r);
+  const list = TECH.map(t => {
+    const done = n.techs.includes(t.id), active = n.research.some(r => r && r.id === t.id), ok = techAvail(n, t);
+    return `<div class="item${done ? ' done' : ok || active ? '' : ' locked'}"><div><div class="t">${t.name}</div><div class="d">${t.desc} · ${t.days}日${t.req && !n.techs.includes(t.req) ? ` · 前提：${TECHM[t.req].name}` : ''}</div></div>
+      ${done ? '<span class="muted">完了</span>' : active ? '<span class="muted">研究中</span>' : `<button type="button" class="btn" data-act="research" data-arg="${t.id}" ${ok && free ? '' : 'disabled'}>研究</button>`}</div>`;
+  }).join('');
+  return `<div><h2>研究</h2><p class="muted">同時に2つまで研究できます</p></div><div class="list">${slots}</div><h3>技術</h3><div class="list">${list}</div>`;
+}
+function tabFocus(n) {
+  const cur = n.focus ? `<div class="item"><div><div class="t">${FOCM[n.focus.id].name}</div><div class="d">あと${FOCUS_DAYS - n.focus.prog}日</div></div>${meter(n.focus.prog / FOCUS_DAYS, 'm-prog')}</div>` : '<div class="item"><div class="t muted">進行中の方針はありません</div></div>';
+  const list = FOCUS.map(f => {
+    const done = n.focusDone.includes(f.id), active = n.focus && n.focus.id === f.id, ok = focusAvail(n, f);
+    return `<div class="item${done ? ' done' : ok || active ? '' : ' locked'}"><div><div class="t">${f.name}</div><div class="d">${f.desc}${f.req && !n.focusDone.includes(f.req) ? ` · 前提：${FOCM[f.req].name}` : ''}</div></div>
+      ${done ? '<span class="muted">達成</span>' : active ? '<span class="muted">進行中</span>' : `<button type="button" class="btn" data-act="focus" data-arg="${f.id}" ${ok && !n.focus ? '' : 'disabled'}>採用</button>`}</div>`;
+  }).join('');
+  return `<div><h2>国家方針</h2><p class="muted">1つずつ、各${FOCUS_DAYS}日かけて達成します</p></div>${cur}<div class="list">${list}</div>`;
+}
+let peaceAsk = -1;
+// 講和したときに、me が得る州と失う州の数
+const peaceTerms = (me, o) => ({ gain: P.filter(p => p.owner === o && p.ctrl === me).length, lose: P.filter(p => p.owner === me && p.ctrl === o).length });
+function tabDiplomacy(n) {
+  const myP = natPower(n.id);
+  const rows = NAT.filter(o => o.id !== n.id).map(o => {
+    if (!o.alive) return `<div class="item done"><div class="t">${natName(o.id)}</div><span class="muted">滅亡</span></div>`;
+    const war = atWar(n.id, o.id), ally = allied(n.id, o.id), goal = n.wargoals.includes(o.id), just = n.justify && n.justify.target === o.id;
+    const ratio = natPower(o.id) / Math.max(1, myP);
+    let st = war ? '<span class="status war">戦争中</span>' : ally ? '<span class="status ally">同盟</span>' : '<span class="status">中立</span>';
+    let acts = '';
+    const truce = truceLeft(n.id, o.id);
+    if (war && peaceAsk === o.id) { const t = peaceTerms(n.id, o.id); acts = `<span>受け入れると：得る ${t.gain}州・失う ${t.lose}州</span><button type="button" class="btn primary" data-act="peaceYes" data-arg="${o.id}">講和する</button><button type="button" class="btn" data-act="peaceNo">やめる</button>`; }
+    else if (war) { const ws = warScore(n.id, o.id); acts = `<span class="muted">戦況 ${ws > 0 ? '+' : ''}${ws}</span><button type="button" class="btn" data-act="peace" data-arg="${o.id}">講和を提案</button>`; }
+    else if (!ally) {
+      if (truce) acts = `<span class="muted">休戦中 あと${truce}日</span>`;
+      else if (goal) acts = `<button type="button" class="btn warn" data-act="declare" data-arg="${o.id}">宣戦布告</button>`;
+      else if (just) acts = `<span class="muted">正当化 あと${n.justify.days}日</span><button type="button" class="btn" data-act="cancelJustify">中止</button>`;
+      else acts = `<button type="button" class="btn" data-act="justify" data-arg="${o.id}" ${n.justify ? 'disabled' : ''}>戦争目標を正当化</button>`;
+      acts += `<button type="button" class="btn" data-act="ally" data-arg="${o.id}">同盟を提案</button>`;
+    }
+    const tags = [o.ai === 'aggressive' ? '拡張志向' : '防衛志向', `陸軍 ${ratio < .7 ? '弱い' : ratio > 1.4 ? '強い' : '互角'}（${fmt(natPower(o.id))}）`];
+    if (o.justify) tags.push(`${NAT[o.justify.target].name}への戦争を準備中`);
+    const theirWars = enemiesOf(o.id).filter(e => e !== n.id); if (theirWars.length) tags.push(`${theirWars.map(e => NAT[e].name).join('・')}と交戦中`);
+    return `<div class="item"><div><div class="t">${natName(o.id)}</div><div class="d">${tags.map(esc).join(' · ')}</div></div>${st}<div class="row" style="grid-column:1/-1">${acts}</div></div>`;
+  }).join('');
+  return `<div><h2>外交</h2><p class="muted">同盟国は、相手が攻められたときに互いに参戦します。講和は相手の戦況が悪いときだけ受け入れられ、占領地はそのまま領土になります。</p></div><div class="list">${rows}</div>`;
+}
+function tabNavy(n) {
+  const my = ships.filter(s => s.nat === n.id), port = hasPort(n), unassigned = n.milT - assigned(n);
+  const ports = P.filter(p => p.port && p.ctrl === n.id);
+  const str = my.reduce((t, s) => t + sAtk(s), 0);
+  const where = s => s.z < 0 ? `${P[s.port].name}港` : s.path.length ? `航行中（${Z[s.path[s.path.length - 1]].name}へ）` : Z[s.z].name;
+  const build = Object.entries(ST).map(([k, t]) => `<div class="item"><div><div class="t">${t.name}</div><div class="d">攻 ${t.atk} / 耐久 ${t.hp} / 速 ${t.speed} · 艦艇資材 ${t.cost} · ${t.days}日</div></div>
+      <button type="button" class="btn primary" data-act="buildShip" data-arg="${k}" ${canBuildShip(n, k) ? '' : 'disabled'}>建造</button></div>`).join('');
+  const q = n.shipQ.map(qd => `<div class="item"><div class="t">${ST[qd.type].name}</div><span class="num muted">${qd.days > 0 ? `あと${qd.days}日` : '港の空き待ち'}</span>${meter(1 - qd.days / ST[qd.type].days, 'm-prog')}</div>`).join('');
+  const list = my.slice().sort((a, b) => ST[b.type].hp - ST[a.type].hp).map(s => `<div class="item"><div><div class="t">${ST[s.type].name}</div><div class="d">${esc(where(s))}</div></div><span class="num muted">${Math.round(s.hp / ST[s.type].hp * 100)}%</span>${meter(s.hp / ST[s.type].hp, 'm-ship')}</div>`).join('');
+  const sea = convoys.filter(c => c.nat === n.id).map(c => `<div class="item"><div><div class="t">輸送船団（${c.units.length}個大隊）</div><div class="d">${esc(Z[c.z].name)} → ${esc(P[c.target].name)}</div></div></div>`).join('');
+  return `<div><h2>海軍</h2><p class="muted">艦艇 ${my.length}隻 · 艦隊戦力 ${fmt(str)} · 港 ${ports.length}</p></div>
+  ${port ? '' : '<p class="tip">港がないため造船できません。沿岸の州を地図で選ぶと港を建設できます。</p>'}
+  <p class="${n.blockade ? '' : 'muted'}" style="margin:0;${n.blockade ? 'color:var(--danger)' : ''}">${n.blockade ? `沿岸の海域を敵艦隊に押さえられ、軍需生産が ${pct(n.blockade)} 落ちています` : '海上封鎖は受けていません'}</p>
+  <div class="item"><div><div class="t">艦艇資材 <span class="num muted">${fmt(n.eq.ship || 0)}</span></div><div class="d">${port ? `+${(n.lines.ship * EQ.ship.rate * n.mod.prod * (1 - (n.blockade || 0))).toFixed(1)}/日 · 軍需工場1つで ${EQ.ship.rate}/日` : '港がないと造船できません'}</div></div>
+    <div class="stepper"><button type="button" class="btn" data-act="line" data-arg="ship" data-d="-1" ${n.lines.ship <= 0 ? 'disabled' : ''} aria-label="造船の工場を減らす">−</button><b>${n.lines.ship}</b><button type="button" class="btn" data-act="line" data-arg="ship" data-d="1" ${unassigned <= 0 || !port ? 'disabled' : ''} aria-label="造船の工場を増やす">＋</button></div></div>
+  <h3>艦艇の建造</h3><div class="list">${build}</div>
+  ${q ? `<h3>建造中</h3><div class="list">${q}</div>` : ''}
+  <h3>艦隊</h3>${my.length ? '<div class="row"><button type="button" class="btn" data-act="selectFleet">全艦を選択</button></div>' : ''}
+  <div class="list">${list || '<p class="muted">艦艇はありません</p>'}${sea}</div>
+  <p class="tip">耐久が25%を切った艦は自動で最寄りの港へ戻ります。港にいる艦は毎日修理されます。</p>`;
+}
+const TABS = { ov: tabOverview, ar: tabArmy, pr: tabProduction, bu: tabBuild, re: tabResearch, fo: tabFocus, na: tabNavy, di: tabDiplomacy };
+let lastPanel = '';
+function renderPanel(force) {
+  if (!G || !G.running || (pressing && !force)) return;
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab));
+  const html = TABS[tab](ME());
+  if (html === lastPanel) return;
+  const f = document.activeElement, fk = f && panel.contains(f) && f.dataset.act ? [f.dataset.act, f.dataset.arg, f.dataset.d] : null;
+  panel.innerHTML = html; lastPanel = html;
+  if (fk) { const g = [...panel.querySelectorAll('[data-act]')].find(b => b.dataset.act === fk[0] && b.dataset.arg === fk[1] && b.dataset.d === fk[2]); if (g && !g.disabled) g.focus(); }
+}
+// 選択中の大隊を師団ごとに並べ、師団ごと・大隊ごとに選び直せるようにする
+const ustat = u => u.attacking >= 0 ? '戦闘中' : u.joinDiv ? '合流に向かう' : u.path.length ? `移動 ${u.path.length}州` : '待機';
+function unitPanel(su) {
+  const provs = new Set(su.length ? su.map(u => u.prov) : [sel.prov]);
+  const shown = units.filter(u => u.nat === G.player && (sel.units.has(u.id) || (provs.size === 1 && provs.has(u.prov))));
+  const g = new Map(); for (const u of shown) { if (!g.has(u.div)) g.set(u.div, []); g.get(u.div).push(u); }
+  const divs = [...g].sort((a, b) => a[0] - b[0]);
+  const nDiv = new Set(su.map(u => u.div)).size;
+  const split = divs.some(([, l]) => l.some(u => sel.units.has(u.id)) && l.some(u => !sel.units.has(u.id))) || nDiv > 1;
+  const merge = provs.size === 1 && nDiv > 1;
+  let h = `<div class="ctx-head"><b>選択中 ${nDiv}個師団・${su.length}大隊</b><span class="row"><button type="button" class="btn" data-act="stop">停止</button><button type="button" class="btn" data-act="deselect">解除</button></span></div><div class="divs">`;
+  h += divs.slice(0, 5).map(([id, l]) => {
+    const all = l.every(u => sel.units.has(u.id)), lead = l.find(u => sel.units.has(u.id)) || l[0];
+    return `<div><button type="button" class="divhead" data-act="selDiv" data-arg="${id}" aria-pressed="${all}"><b>${divName(id)}</b><span class="muted">${divComp(l)} · ${esc(P[lead.prov].name)} · ${ustat(lead)}</span></button>
+      ${l.slice(0, 9).map(u => { const t = UT[u.type], on = sel.units.has(u.id); return `<button type="button" class="urow ubtn" data-act="selU" data-arg="${u.id}" aria-pressed="${on}"><span>${on ? '☑' : '☐'} ${t.short}</span><div class="bars">${meter(u.hp / t.hp, 'm-hp')}${meter(u.org / t.org, 'm-org')}</div><span class="muted">${ustat(u)}</span></button>`; }).join('')}
+      ${l.length > 9 ? `<p class="tip">ほか ${l.length - 9} 大隊</p>` : ''}</div>`;
+  }).join('');
+  if (divs.length > 5) h += `<p class="tip">ほか ${divs.length - 5} 個師団</p>`;
+  h += `</div><div class="row"><button type="button" class="btn" data-act="splitDiv" ${split ? '' : 'disabled'}>選んだ大隊を新しい師団に分ける</button><button type="button" class="btn" data-act="mergeDiv" ${merge ? '' : 'disabled'}>1つの師団にまとめる</button></div>`;
+  h += `<p class="tip">師団名で師団ごと、各行で大隊ごとに選べます。移動先の州をクリック（右クリックでも可）すると、選んだ大隊だけが動きます。白い線＝兵力、緑の線＝組織力</p>`;
+  return h;
+}
+let lastCtx = '';
+function renderCtx(force) {
+  if (!G || !G.running || (pressing && !force)) { if (!G || !G.running) ctxEl.hidden = true; return; }
+  const n = ME(); let h = '';
+  const su = [...sel.units].map(uById).filter(Boolean), ss = selShips();
+  if (ss.length) {
+    h += `<div class="ctx-head"><b>選択中の艦 ${ss.length}</b><span class="row"><button type="button" class="btn" data-act="shipStop">停止</button><button type="button" class="btn" data-act="shipHome">港へ</button><button type="button" class="btn" data-act="deselect">解除</button></span></div>`;
+    h += ss.slice(0, 6).map(s => { const t = ST[s.type], st = s.z < 0 ? `${P[s.port].name}港` : s.path.length ? '航行中' : Z[s.z].name; return `<div class="urow"><span>${t.short}</span><div class="bars">${meter(s.hp / t.hp, 'm-ship')}</div><span class="muted">${esc(st)}</span></div>`; }).join('');
+    if (ss.length > 6) h += `<p class="tip">ほか ${ss.length - 6} 隻</p>`;
+    h += `<p class="tip">移動先の海域をクリック。港のある自国の州をクリックすると入港して修理します</p>`;
+  }
+  if (sel.zone >= 0) {
+    const z = Z[sel.zone], here = new Map();
+    ships.filter(s => s.z === z.id).forEach(s => here.set(s.nat, (here.get(s.nat) || 0) + sAtk(s)));
+    const top = [...here].sort((a, b) => b[1] - a[1])[0];
+    h += `<div class="ctx-head"><b>${esc(z.name)}</b><span class="muted">海域</span></div>
+      <dl class="kv"><dt>艦隊</dt><dd>${here.size ? [...here].map(([k, v]) => `${esc(NAT[k].name)} ${fmt(v)}`).join('<br>') : 'なし'}</dd>
+      <dt>制海</dt><dd>${top ? natName(top[0]) : '空白'}</dd>
+      <dt>接する州</dt><dd>${z.adjP.length}</dd></dl>`;
+  }
+  // 州を選んでいれば、大隊を全部外しても一覧は出したままにする（選び直せるように）
+  if (su.length || (sel.prov >= 0 && units.some(u => u.nat === G.player && u.prov === sel.prov))) h += unitPanel(su);
+  if (sel.prov >= 0) {
+    const p = P[sel.prov], t = TERR[p.terrain];
+    const here = new Map(); units.filter(u => u.prov === p.id).forEach(u => here.set(u.nat, (here.get(u.nat) || 0) + 1));
+    const mine = p.ctrl === n.id, slot = freeSlots(p, n);
+    h += `<div class="ctx-head"><b>${esc(p.name)}</b><span class="muted">${t.name}${p.vp >= 30 ? '・首都' : ''}</span></div>
+      <dl class="kv"><dt>支配</dt><dd>${natName(p.ctrl)}${p.owner !== p.ctrl ? `<br><span class="muted">本来は ${esc(NAT[p.owner].name)}</span>` : ''}</dd>
+      <dt>工場</dt><dd>民需 ${p.civ}・軍需 ${p.mil} / 枠 ${SLOTS[p.terrain]}</dd>
+      <dt>要塞</dt><dd>Lv ${p.fort}</dd><dt>港</dt><dd>${p.port ? 'あり' : p.zones.length ? 'なし（沿岸）' : '内陸'}</dd><dt>防御補正</dt><dd>×${(t.def * (1 + .15 * p.fort)).toFixed(2)}</dd>
+      <dt>大隊</dt><dd>${here.size ? [...here].map(([k, v]) => `${esc(NAT[k].name)} ${v}`).join('<br>') : 'なし'}</dd></dl>`;
+    const acts = [];
+    if (su.length && !su.every(u => u.prov === p.id)) acts.push(`<button type="button" class="btn primary" data-act="moveHere">選択中の師団をここへ</button>`);
+    if (su.length && p.zones.length && canEnter(G.player, p.id) && su.some(u => u.prov !== p.id && P[u.prov].port)) acts.push(`<button type="button" class="btn" data-act="convoyHere">海上輸送でここへ</button>`);
+    const dockedHere = ships.filter(s => s.port === p.id && s.nat === G.player);
+    if (dockedHere.length) acts.push(`<button type="button" class="btn" data-act="selectDocked">停泊中の艦 ${dockedHere.length}隻を選択</button>`);
+    if (mine) {
+      acts.push(`<button type="button" class="btn" data-act="buildAt" data-arg="civ" ${slot > 0 ? '' : 'disabled'}>民需工場</button>`);
+      acts.push(`<button type="button" class="btn" data-act="buildAt" data-arg="mil" ${slot > 0 ? '' : 'disabled'}>軍需工場</button>`);
+      if (p.zones.length && !p.port) acts.push(`<button type="button" class="btn" data-act="buildAt" data-arg="port" ${n.build.some(b => b.prov === p.id && b.kind === 'port') ? 'disabled' : ''}>港</button>`);
+      acts.push(`<button type="button" class="btn" data-act="buildAt" data-arg="fort" ${p.fort + n.build.filter(b => b.prov === p.id && b.kind === 'fort').length < 5 ? '' : 'disabled'}>要塞</button>`);
+    }
+    if (acts.length) h += `<div class="row">${acts.join('')}</div>`;
+  }
+  if (!h) h = `<p class="tip">自国の師団（数字の札）をクリックして選び、進みたい州をクリックすると進軍します。ドラッグで地図を動かし、ホイールで拡大できます。</p><div class="row"><button type="button" class="btn" data-act="selectAll">全師団を選択</button></div>`;
+  ctxEl.hidden = false;
+  if (h !== lastCtx) { ctxEl.innerHTML = h; lastCtx = h; }
+}
+let lastLogLen = -1;
+function renderLog() {
+  if (!G || !logChanged) return; logChanged = false;
+  const recent = G.log.filter(l => G.day - l.d < 20 && l.k !== 'info' || G.day - l.d < 6).slice(-4);
+  $('log').innerHTML = recent.map(l => `<div class="${l.k}">${dateStr(l.d)}　${esc(l.t)}</div>`).join('');
+}
+
+function act(a, arg, el) {
+  const n = ME();
+  switch (a) {
+    case 'line': { const d = +el.dataset.d; const un = n.milT - assigned(n); if (d > 0 && un <= 0) return; n.lines[arg] = Math.max(0, n.lines[arg] + d); break; }
+    case 'train': if (canTrain(n, arg)) { trainStart(n, arg); toast(`${UT[arg].name}の訓練を開始`); } break;
+    case 'build': { const p = bestBuildProv(n); if (p) { queueBuild(n, arg, p.id); toast(`${p.name}に${BNAME[arg]}を建設します`); } break; }
+    case 'buildAt': { const p = P[sel.prov]; if (!p || p.ctrl !== n.id) return; if ((arg === 'civ' || arg === 'mil') && freeSlots(p, n) <= 0) return; if (arg === 'port' && (p.port || !p.zones.length)) return; queueBuild(n, arg, p.id); toast(`${p.name}に${BNAME[arg]}を建設します`); break; }
+    case 'cancelBuild': n.build = n.build.filter(b => b.id !== +arg); break;
+    case 'research': { const i = n.research.findIndex(r => !r); if (i >= 0 && techAvail(n, TECHM[arg])) n.research[i] = { id: arg, prog: 0 }; break; }
+    case 'focus': if (!n.focus && focusAvail(n, FOCM[arg])) n.focus = { id: arg, prog: 0 }; break;
+    case 'justify': if (!n.justify && !truceLeft(n.id, +arg)) { n.justify = { target: +arg, days: 30 }; log(`${NAT[+arg].name}への戦争目標の正当化を開始`); } break;
+    case 'cancelJustify': n.justify = null; break;
+    case 'declare': if (n.wargoals.includes(+arg) && !truceLeft(n.id, +arg)) declareWar(n.id, +arg); break;
+    case 'ally': if (allianceAccepts(+arg)) { makeAlliance(n.id, +arg); toast(`${NAT[+arg].name}が同盟に応じました`); } else toast(`${NAT[+arg].name}は同盟を断りました（共通の敵や脅威がないと応じません）`); break;
+    case 'peace': { const t = +arg, ws = warScore(t, n.id); if (ws <= -15) peaceAsk = t; else toast(`${NAT[t].name}は講和を拒否しました（相手の戦況 ${ws > 0 ? '+' : ''}${ws}。-15以下で応じます）`); break; }
+    case 'moveHere': if (sel.prov >= 0) orderMove(sel.prov); break;
+    case 'stop': for (const id of sel.units) { const u = uById(id); if (u) { u.path = []; u.attacking = -1; u.prog = 0; u.joinDiv = 0; } } break;
+    case 'goDiv': {
+      const l = units.filter(u => u.nat === n.id && u.div === +arg); if (!l.length) return;
+      sel.units.clear(); sel.ships.clear(); sel.zone = -1; l.forEach(u => sel.units.add(u.id)); sel.prov = l[0].prov; mapDirty = true;
+      const pv = P[l[0].prov]; if (view.s < Math.min(CW / M.MW, CH / M.MH) * 1.6) view.s = Math.min(CW / M.MW, CH / M.MH) * 1.6;
+      view.x = pv.lx - CW / 2 / view.s; view.y = pv.ly - CH / 2 / view.s; break;
+    }
+    case 'deployTo': { const id = +arg; n.deployTo = id && n.deployTo !== id ? id : 0; toast(n.deployTo ? `訓練した大隊は${divName(id)}へ配属します` : '訓練した大隊は首都で新しい師団になります'); break; }
+    case 'deselect': sel.units.clear(); sel.ships.clear(); break;
+    case 'buildShip': if (canBuildShip(n, arg)) { buildShip(n, arg); toast(`${ST[arg].name}の建造を開始`); } break;
+    case 'selectFleet': sel.units.clear(); ships.filter(s => s.nat === n.id).forEach(s => sel.ships.add(s.id)); mapDirty = true; break;
+    case 'selectDocked': sel.units.clear(); sel.ships.clear(); ships.filter(s => s.nat === n.id && s.port === sel.prov).forEach(s => sel.ships.add(s.id)); break;
+    case 'shipStop': for (const s of selShips()) { s.path = []; s.dockAt = -1; } break;
+    case 'shipHome': for (const s of selShips()) returnToPort(s); break;
+    case 'convoyHere': if (sel.prov >= 0) orderConvoy(sel.prov, [...sel.units].map(uById).filter(Boolean)); break;
+    case 'selectAll': units.filter(u => u.nat === G.player).forEach(u => sel.units.add(u.id)); break;
+    case 'selU': { const id = +arg; if (sel.units.has(id)) sel.units.delete(id); else sel.units.add(id); break; }
+    case 'selDiv': { const l = units.filter(u => u.nat === n.id && u.div === +arg), all = l.every(u => sel.units.has(u.id)); l.forEach(u => all ? sel.units.delete(u.id) : sel.units.add(u.id)); break; }
+    case 'splitDiv': {
+      const su = [...sel.units].map(uById).filter(Boolean), byP = new Map();
+      for (const u of su) { if (!byP.has(u.prov)) byP.set(u.prov, []); byP.get(u.prov).push(u); }
+      const made = []; for (const l of byP.values()) { const id = newDivId(n); l.forEach(u => { u.div = id; }); made.push(divName(id)); }
+      toast(`${made.join('・')}を編成しました`); break;
+    }
+    case 'mergeDiv': {
+      const su = [...sel.units].map(uById).filter(Boolean); if (!su.length || new Set(su.map(u => u.prov)).size !== 1) return;
+      const id = Math.min(...su.map(u => u.div)), olds = new Set(su.map(u => u.div));
+      // まとめる師団の大隊は、選んでいないものも含めて全部入れる
+      for (const u of units) if (u.nat === n.id && u.prov === su[0].prov && olds.has(u.div)) { u.div = id; u.path = []; u.attacking = -1; u.prog = 0; sel.units.add(u.id); }
+      toast(`${divName(id)}にまとめました（${units.filter(u => u.nat === n.id && u.div === id).length}大隊）`); break;
+    }
+    case 'save': save(false); break;
+    case 'peaceYes': { const t = +arg; peaceAsk = -1; if (atWar(n.id, t) && warScore(t, n.id) <= -15) { makePeace(n.id, t); toast(`${NAT[t].name}と講和しました`); } else toast(`${NAT[t].name}は講和を拒否しました`); break; }
+    case 'peaceNo': peaceAsk = -1; break;
+    case 'manual': openManual(el); return;
+    case 'diff': if (DIFF[arg] && G.diff !== arg) { G.diff = arg; toast(`難易度を「${DIFF[arg].name}」にしました`); } break;
+    case 'askNew': confirmNew = true; break;
+    case 'cancelNew': confirmNew = false; break;
+    case 'newgame': confirmNew = false; try { localStorage.removeItem(SAVE_KEY); } catch (e) {} showStart(Math.floor(Math.random() * 1e9)); return;
+  }
+  NAT.forEach(economyStats);
+  pressing = false; needDraw = true; renderPanel(true); renderCtx(true); updateBar();
+}
+function onAct(e) { const b = e.target.closest('[data-act]'); if (!b || b.disabled) return; act(b.dataset.act, b.dataset.arg, b); }
+panel.addEventListener('click', onAct);
+ctxEl.addEventListener('click', onAct);
+$('tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab; confirmNew = false; peaceAsk = -1; renderPanel(true); });
+
+// 時間の速さ
+const SPD_MIN = .25, SPD_MAX = 30;
+const spdToV = s => Math.round(100 * Math.log(s / SPD_MIN) / Math.log(SPD_MAX / SPD_MIN));
+const vToSpd = v => +(SPD_MIN * Math.pow(SPD_MAX / SPD_MIN, v / 100)).toFixed(2);
+function setSpeed(s) { G.speed = Math.max(SPD_MIN, Math.min(SPD_MAX, s)); $('b-spd').value = spdToV(G.speed); updateBar(); }
+$('b-spd').addEventListener('input', e => { G.speed = vToSpd(+e.target.value); updateBar(); });
+$('b-play').addEventListener('click', () => { if (!G.running || G.over || G.offer) return; G.paused = !G.paused; updateBar(); });
+$('b-pre').addEventListener('click', e => { const b = e.target.closest('[data-s]'); if (!b) return; setSpeed(+b.dataset.s); if (G.running && !G.over && !G.offer) G.paused = false; updateBar(); });
+document.addEventListener('keydown', e => {
+  if (!$('manual').hidden) { if (e.key === 'Escape') closeManual(); return; }
+  if (!$('offer').hidden) return;
+  if (!G || !G.running || e.target.closest('input, textarea')) return;
+  if (e.key === ' ' && !e.target.closest('button')) { e.preventDefault(); if (!G.over) G.paused = !G.paused; updateBar(); }
+  else if (/^[1-5]$/.test(e.key)) { setSpeed([.5, 1, 2, 5, 12][+e.key - 1]); if (!G.over) G.paused = false; }
+  else if (e.key === '+' || e.key === ';') setSpeed(G.speed * 1.25);
+  else if (e.key === '-') setSpeed(G.speed / 1.25);
+  else if (e.key === 'Escape') { sel.units.clear(); sel.ships.clear(); sel.zone = -1; sel.prov = -1; mapDirty = true; uiDirty = true; }
+});
+
+// ================= 講和の申し込み =================
+function showOffer() {
+  const o = G.offer, me = G.player, t = peaceTerms(me, o.from), sc = warScore(me, o.from);
+  $('offer-body').innerHTML = `<h2 id="offer-title">${natName(o.from)}が講和を申し込んできました</h2>
+    <p>${o.kind === 'lose' ? '相手は戦況が悪く、戦争をやめたがっています。' : '相手はほかの戦争も抱えていて、この戦争を終わらせたがっています。'}</p>
+    <dl class="kv"><dt>あなたが得る州</dt><dd>${t.gain}</dd><dt>あなたが失う州</dt><dd>${t.lose}</dd><dt>あなたの戦況</dt><dd>${sc > 0 ? '+' : ''}${sc}</dd></dl>
+    <p class="tip">受け入れると、いま占領している州がそのまま占領した側の領土になり、${PEACE.truce}日間は互いに宣戦できなくなります。断ると、${PEACE.offerCD}日間は申し込みが来ません。</p>
+    <div class="row"><button type="button" class="btn primary" id="offer-yes">受け入れる</button><button type="button" class="btn" id="offer-no">断る</button></div>`;
+  $('offer').hidden = false; updateBar();
+  $('offer-yes').onclick = () => { const e = o.from; closeOffer(); if (atWar(me, e)) { makePeace(me, e); toast(`${NAT[e].name}と講和しました`); } afterOffer(); };
+  $('offer-no').onclick = () => { const e = o.from; closeOffer(); G.offerCD[e] = G.day + PEACE.offerCD; log(`${NAT[e].name}からの講和の申し込みを断った`); afterOffer(); };
+  $('offer-yes').focus();
+}
+function closeOffer() { G.offer = null; $('offer').hidden = true; }
+function afterOffer() { NAT.forEach(economyStats); renderPanel(true); renderCtx(true); updateBar(); }
+
+// ================= 遊び方と用語集 =================
+// 数値はゲームの定義（UT・TERR・EQ など）から作るので、調整しても説明とずれない
+function manualSections() {
+  const unitRows = Object.values(UT).map(t => `<tr><td>${t.name}</td><td>${t.atk}</td><td>${t.def}</td><td>${t.speed}</td><td>${Object.entries(t.cost).map(([k, v]) => `${EQ[k].name} ${v}`).join('・')}</td><td>${fmtMP(t.mp)}</td><td>${t.days}日</td></tr>`).join('');
+  const shipRows = Object.values(ST).map(t => `<tr><td>${t.name}</td><td>${t.atk}</td><td>${t.hp}</td><td>${t.speed}</td><td>${t.cost}</td><td>${t.days}日</td></tr>`).join('');
+  const terrRows = TERR_I.map(k => { const t = TERR[k]; return `<tr><td>${t.name}</td><td>×${t.def.toFixed(2)}</td><td>×${t.move}</td><td>×${t.arm.toFixed(2)}</td><td>${SLOTS[k]}</td></tr>`; }).join('');
+  const eqList = Object.values(EQ).map(e => `${e.name} ${e.rate}`).join('、');
+  const diffList = Object.values(DIFF).map(d => `<li><b>${d.name}</b>：${d.desc}</li>`).join('');
+  return [
+    { id: 'goal', title: '勝利と敗北', html: `
+      <div class="goal"><p><b>覇権による勝利</b>：大陸の州の${Math.round(HEGEMONY * 100)}%以上を自国が支配したとき（占領地も数えます）。</p></div>
+      <div class="goal"><p><b>同盟による勝利</b>：どこか1国が滅び、生き残った他の国がすべて自国の同盟国で、しかも自国が大陸で一番多くの州を支配しているとき。</p></div>
+      <div class="goal lose"><p><b>敗北</b>：自国が降伏したとき。降伏の条件は「戦争と外交」の「降伏」を見てください。</p></div>
+      <p>領土を広げて覇権を握るか、国力を育てて同盟国とともに大陸をまとめるか、勝ち方は1つではありません。今どこまで近づいているかは、国家タブの「勝利への道」で確かめられます。</p>` },
+    { id: 'flow', title: '最初にやること', html: `
+      <ul>
+        <li><b>研究</b>：研究タブで技術を選びます。同時に2つまで進められます。</li>
+        <li><b>生産</b>：生産タブで軍需工場を装備に割り当て、装備がたまったら大隊を訓練します。訓練した大隊は首都で新しい師団になるか、陸軍タブで決めた配属先の師団へ合流しに向かいます。</li>
+        <li><b>建設</b>：建設タブで工場を建て、国力を伸ばします。前線には要塞も有効です。</li>
+        <li><b>国家方針</b>：方針タブで方針を1つ選びます。${FOCUS_DAYS}日で達成し、効果が出ます。</li>
+        <li><b>時間を進める</b>：▶で時間が進みます。戦争が始まったときなど、大事な場面では自動で止まります。</li>
+      </ul>` },
+    { id: 'ops', title: '操作', html: `
+      <ul>
+        <li><b>師団を動かす</b>：地図の数字の札をクリックすると、その州にいる自国の大隊がすべて選ばれます。行き先の州をクリック（右クリックでも可）。Shift を押しながらで追加選択。</li>
+        <li><b>選び直す</b>：左下のパネルに、選んだ大隊が師団ごとに並びます。師団名を押すと師団ごと、各行を押すと大隊ごとに選んだり外したりできます。</li>
+        <li><b>陸軍タブ</b>：自国の師団が一覧で見られます。「選ぶ」でその師団を選び、地図がその州へ動きます。</li>
+        <li><b>分割と統合</b>：大隊を選んで「新しい師団に分ける」と、別の師団になります。同じ州にいる師団を選んで「1つの師団にまとめる」と合流します。師団の一部だけを動かすと、動かした大隊は自動で新しい師団になります。</li>
+        <li><b>艦隊を動かす</b>：海の「艦」の札を選び、行き先の海域をクリック。港のある自国の州をクリックすると入港します。</li>
+        <li><b>海上輸送</b>：港にいる師団を選び、海の向こうの沿岸の州をクリックします。</li>
+        <li><b>地図</b>：ドラッグで移動、ホイールかピンチで拡大・縮小、右上の ⌖ で全体を表示。</li>
+        <li><b>キー</b>：スペースで一時停止、1〜5 で速さ、＋／− で微調整、Esc で選択の解除。</li>
+      </ul>` },
+    { id: 'map', title: '地図の見方', html: `
+      <dl class="terms">
+        <dt>数字の札</dt><dd>その州にいる大隊の数。色は国の色。◆ が付いていれば機甲大隊を含みます。</dd>
+        <dt>札の下の緑の線</dt><dd>その州の大隊の組織力の残り。</dd>
+        <dt>★ と ○</dt><dd>★ は首都、○ は都市。</dd>
+        <dt>縞模様の州</dt><dd>占領地。本来の持ち主の色が縞模様で残ります。</dd>
+        <dt>⚔</dt><dd>戦闘中。下の帯は、攻める側と守る側の力の比べ合い。</dd>
+        <dt>艦・⚓・輸</dt><dd>海上の艦隊、港に停泊中の艦、輸送船団。数字は隻数や大隊数。</dd>
+        <dt>線と矢印</dt><dd>自国の部隊の進路。選択中のものは金色で表示されます。</dd>
+      </dl>` },
+    { id: 'terms', title: '用語集', html: `
+      <dl class="terms">
+        <dt>州</dt><dd>地図の1区画。地形、工場、要塞、港を持ちます。</dd>
+        <dt>民需工場</dt><dd>建設を進める工場。一部は消費財に回り、残りが建設力になります（1工場で1日5、1件あたり1日最大50）。</dd>
+        <dt>消費財</dt><dd>国民生活のために回される工場。工場全体の25%が基本で、国家方針で減らせます。</dd>
+        <dt>軍需工場</dt><dd>装備を作る工場。生産タブで品目ごとに割り当てます。1工場あたり1日に${eqList}を作ります。</dd>
+        <dt>人的資源</dt><dd>大隊の訓練と補充に使う人員。自国の州ごとに毎日増えます（占領地は少なめ）。</dd>
+        <dt>配属先</dt><dd>訓練した大隊が加わる師団。陸軍タブで決めます。決めていなければ、首都で新しい師団になります。配属先の師団が遠くにいれば、大隊は自分で歩いて合流しに行きます。</dd>
+        <dt>師団</dt><dd>陸軍の部隊。いくつかの大隊でできていて、一緒に動きます（いちばん遅い大隊に速さを合わせます）。分けたり、まとめたりできます。</dd>
+        <dt>大隊</dt><dd>師団を作る単位。歩兵・砲兵・機甲の3種類（機甲は研究「戦車 I」で解禁）。訓練も戦闘も大隊ごとに行います。退却などで1つの師団の大隊が別の州に分かれると、離れた側は新しい師団になります。</dd>
+        <dt>戦闘の幅</dt><dd>1つの戦闘に加われるのは、攻める側・守る側それぞれ強い順に8大隊までです。</dd>
+        <dt>兵力</dt><dd>大隊の体力（選択時の白い線）。0になると全滅します。自国や同盟国の州にいれば、装備と人的資源を使って少しずつ補充されます。</dd>
+        <dt>組織力</dt><dd>戦い続ける力（緑の線）。戦闘で減り、0になると退却します。止まっていれば早く、移動中でもゆっくり回復します。</dd>
+        <dt>退却・包囲</dt><dd>組織力が尽きた守備側は、敵のいない味方の州へ下がります。下がれる州がなければ包囲されて壊滅します。</dd>
+        <dt>要塞</dt><dd>州の防御を1段階ごとに15%上げます。最大5段階。</dd>
+        <dt>港</dt><dd>造船、艦の修理、海上輸送の出発に必要です。沿岸の州に建てられます。</dd>
+        <dt>海域・制海</dt><dd>海は海域に分かれています。艦隊の力が一番強い国が、その海域の制海を握ります。</dd>
+        <dt>海上封鎖</dt><dd>自国の沿岸の海域を敵艦隊に押さえられると、1海域ごとに軍需生産が5%落ちます（最大30%）。</dd>
+        <dt>輸送船団</dt><dd>海上輸送中の部隊。敵艦隊が優勢な海域に入ると沈められ、乗っている大隊を失います。</dd>
+        <dt>上陸作戦</dt><dd>海から敵の州に攻め込むこと。上陸時の攻撃力は半分です（研究「揚陸戦術」で ×0.75）。</dd>
+        <dt>研究</dt><dd>技術を手に入れて能力を上げます。同時に2つまで。</dd>
+        <dt>国家方針</dt><dd>国の方針。1つずつ${FOCUS_DAYS}日かけて達成し、工場や人的資源などが増えます。</dd>
+        <dt>拡張志向・防衛志向</dt><dd>AIの国の性格。拡張志向の国は弱い隣国に戦争を仕掛けます。防衛志向の国は自分からは攻めず、攻められた国を助けることがあります。</dd>
+      </dl>` },
+    { id: 'diplo', title: '戦争と外交', html: `
+      <dl class="terms">
+        <dt>戦争目標の正当化</dt><dd>宣戦の準備。外交タブで相手を選び、30日たつと宣戦布告できるようになります。</dd>
+        <dt>宣戦布告</dt><dd>戦争を始めること。相手の同盟国も一緒に参戦してきます。こちらから攻めた場合、こちらの同盟国は参戦しません。</dd>
+        <dt>同盟</dt><dd>相手が攻められたら互いに参戦する約束。共通の敵がいるときや、拡張志向の国に脅かされているときに応じてもらえます。拡張志向の国は同盟に応じません。</dd>
+        <dt>戦況</dt><dd>相手から奪った州の割合から、奪われた州の割合を引いた数値（-100〜+100）。</dd>
+        <dt>講和</dt><dd>戦争をやめること。占領していた州は、そのまま占領した側の領土になります。こちらから申し込んだ場合、相手は戦況が -15 以下のときだけ応じます。外交タブで、得る州と失う州の数を確かめてから決められます。</dd>
+        <dt>講和の申し込み</dt><dd>AIの側から講和を申し込んでくることがあります。相手の戦況が悪いときや、相手がほかの戦争も抱えているときです。断ると、その国からは${PEACE.offerCD}日間は申し込みが来ません。</dd>
+        <dt>AI同士の講和</dt><dd>AI同士の戦争も、どちらかの戦況が -${PEACE.decisive} 以下まで傾くか、長く膠着すると、講和で終わることがあります。勝っている側が拡張志向だと講和しにくく、相手の首都をすでに占領していれば、降伏させるまで戦い続けます。</dd>
+        <dt>休戦</dt><dd>講和した2国は、${PEACE.truce}日間は互いに宣戦できません。外交タブに残りの日数が出ます。</dd>
+        <dt>降伏</dt><dd>戦争中に、首都を占領されたうえで本来の領土の半分以上を失うか、本来の領土の4分の3以上を失うと、その国は降伏します。領土は占領していた国に併合されます。</dd>
+      </dl>` },
+    { id: 'diff', title: '難易度', html: `<ul>${diffList}</ul><p>難易度はゲーム中でも、国家タブからいつでも変えられます。</p>` },
+    { id: 'data', title: '性能表', html: `
+      <p><b>大隊</b></p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>種類</th><th>攻撃</th><th>防御</th><th>速さ</th><th>装備</th><th>人員</th><th>訓練</th></tr></thead><tbody>${unitRows}</tbody></table></div>
+      <p><b>艦艇</b>（費用は艦艇資材）</p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>種類</th><th>攻撃</th><th>耐久</th><th>速さ</th><th>費用</th><th>建造</th></tr></thead><tbody>${shipRows}</tbody></table></div>
+      <p><b>地形</b>（防御は守る側への補正、機甲は機甲大隊の攻撃への補正）</p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>地形</th><th>防御</th><th>移動コスト</th><th>機甲</th><th>工場枠</th></tr></thead><tbody>${terrRows}</tbody></table></div>` },
+  ];
+}
+let manualOpener = null, manualWasPaused = true;
+function openManual(opener) {
+  const secs = manualSections();
+  $('manual-nav').innerHTML = secs.map(x => `<button type="button" class="btn" data-sec="${x.id}">${x.title}</button>`).join('');
+  $('manual-body').innerHTML = secs.map(x => `<section id="man-${x.id}" aria-labelledby="man-h-${x.id}"><h3 id="man-h-${x.id}">${x.title}</h3>${x.html}</section>`).join('');
+  manualOpener = opener || document.activeElement;
+  // 読んでいる間は時間を止め、閉じたら元に戻す
+  manualWasPaused = !G || G.paused;
+  if (G) { G.paused = true; updateBar(); }
+  $('manual').hidden = false;
+  $('manual-body').scrollTop = 0; // 表示してからでないと位置を戻せない
+  $('manual-close').focus();
+}
+function closeManual() {
+  $('manual').hidden = true;
+  if (G && G.running && !G.over && !G.offer && !manualWasPaused) G.paused = false;
+  updateBar();
+  if (manualOpener && document.contains(manualOpener)) manualOpener.focus();
+}
+$('b-help').addEventListener('click', e => openManual(e.currentTarget));
+$('manual-close').addEventListener('click', closeManual);
+$('manual').addEventListener('click', e => { if (e.target === $('manual')) closeManual(); });
+$('manual-nav').addEventListener('click', e => {
+  const b = e.target.closest('[data-sec]'); if (!b) return;
+  const sec = $('man-' + b.dataset.sec), body = $('manual-body');
+  body.scrollTop = sec.offsetTop - body.offsetTop;
+});
+
+// ================= 開始・終了 =================
+const sheet = $('sheet');
+function showStart(seed) {
+  sheet.innerHTML = '<p>地図を作っています…</p>'; $('start').hidden = false;
+  setTimeout(() => {
+    newGame(seed); startPick = -1; sel.units.clear(); sel.ships.clear(); sel.zone = -1; sel.prov = -1;
+    fitView(); renderStart(); updateBar(); panel.innerHTML = ''; lastPanel = ''; ctxEl.hidden = true; $('log').innerHTML = '';
+  }, 30);
+}
+function renderStart() {
+  const saved = loadSave();
+  const cards = NAT.map(n => {
+    const own = P.filter(p => p.owner === n.id), civ = own.reduce((s, p) => s + p.civ, 0), mil = own.reduce((s, p) => s + p.mil, 0), div = units.filter(u => u.nat === n.id).length;
+    return `<button type="button" class="natcard" data-nat="${n.id}" aria-pressed="${startPick === n.id}"><span class="chip" style="background:${rgb(n.color)}"></span>
+      <span><span class="n">${esc(n.name)}</span><br><span class="s">${own.length}州 · 民需${civ} 軍需${mil} · ${div}個大隊 · ${own.some(p => p.port) ? `港${own.filter(p => p.port).length}・艦${ships.filter(s => s.nat === n.id).length}` : '内陸国'}</span></span>
+      <span class="tag ${n.ai === 'aggressive' ? 'ag' : ''}">${n.ai === 'aggressive' ? '拡張志向' : '防衛志向'}</span></button>`;
+  }).join('');
+  sheet.innerHTML = `<h1>鉄の大陸</h1>
+    <p>架空の大陸で一国を率いる戦略ゲームです。工場を建て、師団を育て、隣国の野心に備えるか、自ら大陸の覇権を狙います。地図は毎回新しく作られます。</p>
+    <div class="natlist" id="natlist">${cards}</div>
+    <p class="tip">地図の国をクリックしても選べます。拡張志向の2国はいずれ周辺国に攻め込みます。</p>
+    <div style="display:grid;gap:6px"><b>難易度</b>${diffPicker('start')}</div>
+    <div class="row"><button type="button" class="btn primary" id="go" ${startPick >= 0 ? '' : 'disabled'}>${startPick >= 0 ? esc(NAT[startPick].name) + 'で始める' : '国を選んでください'}</button>
+    <button type="button" class="btn" id="reroll">別の地図にする</button>
+    <button type="button" class="btn" id="howto">遊び方</button>
+    ${saved ? `<button type="button" class="btn" id="cont">続きから（${dateStr(saved.day)}）</button>` : ''}</div>`;
+  sheet.querySelectorAll('[data-nat]').forEach(b => b.onclick = () => { startPick = +b.dataset.nat; mapDirty = true; renderStart(); });
+  sheet.querySelectorAll('[data-diff]').forEach(b => b.onclick = () => { G.diff = b.dataset.diff; renderStart(); });
+  $('go').onclick = () => beginGame(startPick);
+  $('reroll').onclick = () => showStart(Math.floor(Math.random() * 1e9));
+  $('howto').onclick = e => openManual(e.currentTarget);
+  if (saved) $('cont').onclick = () => { restore(saved); afterBegin(); log('保存したゲームを再開'); };
+}
+function beginGame(id) {
+  if (id < 0) return;
+  guideDismissed = false;
+  G.player = id; G.running = true; G.paused = true;
+  G.guideUnitBaseline = units.filter(u => u.nat === id).length;
+  log(`${NAT[id].name}の指導者に就任した。▶で時間を進めよう`, 'good');
+  afterBegin();
+}
+function afterBegin() {
+  $('start').hidden = true; startPick = -1; guideDismissed = false;
+  if (G.guideUnitBaseline == null) G.guideUnitBaseline = units.filter(u => u.nat === G.player).length;
+  mapDirty = true; tab = 'ov'; lastPanel = ''; lastCtx = '';
+  setSpeed(G.speed || 1); renderPanel(true); renderCtx(true); updateBar();
+  focusCapital();
+}
+function focusCapital() {
+  if (!CW) return;
+  const c = P[ME().cap]; view.s = Math.min(CW / M.MW, CH / M.MH) * 1.6; view.x = c.cx - CW / 2 / view.s; view.y = c.cy - CH / 2 / view.s; needDraw = true;
+}
+function endGame(win, kind) {
+  G.over = true; G.paused = true;
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  const n = ME(), own = P.filter(p => p.owner === G.player).length;
+  sheet.innerHTML = `<h1>${win ? '勝利' : '降伏'}</h1>
+    <p>${!win ? `${dateStr(G.day)}、${esc(n.name)}は降伏した。` : kind === 'hegemony' ? `${dateStr(G.day)}、${esc(n.name)}は大陸の州の半分以上を手にし、覇権を打ち立てた。` : `${dateStr(G.day)}、${esc(n.name)}は大陸一の国となり、残る国はすべて同盟国となった。`}</p>
+    <dl class="kv">${win ? `<dt>勝ち方</dt><dd>${kind === 'hegemony' ? '覇権' : '同盟'}</dd>` : ''}<dt>経過日数</dt><dd>${G.day}日</dd><dt>最終的な領土</dt><dd>${own}州</dd><dt>滅んだ国</dt><dd>${NAT.filter(x => !x.alive).length}</dd></dl>
+    <div class="row"><button type="button" class="btn primary" id="again">新しい地図で遊ぶ</button><button type="button" class="btn" id="look">地図を眺める</button></div>`;
+  $('start').hidden = false;
+  $('again').onclick = () => showStart(Math.floor(Math.random() * 1e9));
+  $('look').onclick = () => { $('start').hidden = true; };
+  updateBar();
+}
+
+// ================= ループ =================
+let lastT = performance.now(), acc = 0, lastUI = 0;
+function frame(t) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(1, (t - lastT) / 1000); lastT = t;
+  if (G && G.running && !G.paused && !G.over) {
+    acc += dt * G.speed; let k = 0;
+    while (acc >= 1 && k < 40 && !G.over) { acc -= 1; dailyTick(); k++; }
+    if (k >= 40) acc = 0;
+    if (k) uiDirty = true;
+  }
+  if (mapDirty && M) { renderMapImage(); mapDirty = false; needDraw = true; }
+  if (uiDirty) needDraw = true;
+  if (needDraw) { needDraw = false; draw(); }
+  if (t - lastUI > 200 && (uiDirty || t - lastUI > 1000)) { lastUI = t; uiDirty = false; updateBar(); renderPanel(); renderCtx(); renderLog(); }
+}
+new ResizeObserver(resize).observe(cv);
+document.fonts?.ready.then(() => { needDraw = true; });
+// 30日ごとの自動保存に加えて、ページを閉じる・別タブに移るときにも保存する
+window.addEventListener('pagehide', () => save(true));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(true); });
+
+function start(data) {
+  G = null;
+  window.claude?.hot?.snapshot?.(() => (G && G.running && !G.over ? serialize() : null));
+  if (data && data.v === 1 && data.seed) { restore(data); fitView(); afterBegin(); }
+  else showStart(Math.floor(Math.random() * 1e9));
+  requestAnimationFrame(frame);
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>

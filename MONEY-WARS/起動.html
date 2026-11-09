@@ -1,0 +1,1186 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>コイン・ウォーズ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg0:#07060f;--panel:rgba(22,18,42,.94);--panel2:rgba(40,34,72,.85);
+  --line:rgba(255,214,140,.14);--line2:rgba(255,214,140,.32);
+  --text:#f3eefe;--dim:#9d97bf;--dim2:#6d6894;
+  --gold:#ffd27a;--gold2:#f5a524;--red:#ff5d73;--green:#4fe3a4;--blue:#62b6ff;
+  --c1:#a3abc0;--c2:#3ccf8e;--c3:#3b9cff;--c4:#b26bff;--c5:#ffb547;
+  --disp:"Cinzel","Noto Sans JP",serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  color:var(--text);font-family:"Noto Sans JP","Segoe UI","Yu Gothic UI",sans-serif;font-size:14px;min-height:100vh;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%,#3a2a78 0%,transparent 60%),
+    radial-gradient(ellipse 60% 40% at 50% 110%,#4a3410 0%,transparent 60%),
+    radial-gradient(circle at 10% 50%,#1b1440 0%,transparent 40%),
+    var(--bg0);
+}
+body::before{ /* 菱形の地紋 */
+  content:"";position:fixed;inset:0;pointer-events:none;opacity:.05;
+  background:
+    repeating-linear-gradient(45deg,var(--gold) 0 1px,transparent 1px 34px),
+    repeating-linear-gradient(-45deg,var(--gold) 0 1px,transparent 1px 34px);
+}
+#app{position:relative;max-width:1280px;margin:0 auto;padding:14px 16px 0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;
+  box-shadow:0 12px 32px #0009,inset 0 1px 0 #ffffff12}
+.ttl{font-family:var(--disp);font-size:12px;letter-spacing:.18em;color:var(--gold);margin:0 0 10px;display:flex;align-items:center;gap:8px;text-transform:uppercase}
+.ttl::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line2),transparent)}
+.ttl small{font-family:"Noto Sans JP";letter-spacing:0;color:var(--dim);text-transform:none;font-size:11px}
+
+/* ===== HUD ===== */
+.hud{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:10px 18px}
+.logo{display:flex;flex-direction:column;line-height:1}
+.logo b{font-family:var(--disp);font-weight:800;font-size:22px;letter-spacing:.08em;
+  background:linear-gradient(180deg,#fff3c9,var(--gold) 45%,var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 10px #f5a52455)}
+.logo span{font-size:10px;color:var(--dim);letter-spacing:.3em;margin-top:3px}
+.track{flex:1;min-width:220px;display:flex;flex-direction:column;gap:5px}
+.track .lab{font-size:11px;color:var(--dim)}.bestmini{margin-left:12px;color:var(--dim2)}.track .lab b{font-family:var(--disp);color:var(--text);font-size:15px}
+.pips{display:flex;gap:4px;flex-wrap:wrap}
+.pip{width:12px;height:12px;border-radius:3px;background:#ffffff14;border:1px solid #ffffff1c;position:relative;transform:rotate(45deg) scale(.8)}
+.pip.done{background:#ffd27a55;border-color:#ffd27a88}
+.pip.lost{background:#ff5d7355;border-color:#ff5d7388}
+.pip.draw{background:#62b6ff44;border-color:#62b6ff88}
+.pip.cur{background:var(--gold);box-shadow:0 0 10px var(--gold);transform:rotate(45deg) scale(1)}
+.pip.ev::after{content:"";position:absolute;inset:3px;border-radius:1px;background:#b26bff}
+.pip.st{border-color:var(--red)}
+.pip.boss{border-color:var(--red);background:#ff5d7333;transform:rotate(45deg) scale(1.05)}
+.hpbox{min-width:140px}
+.hpbox .lab{display:flex;justify-content:space-between;font-size:11px;color:var(--dim)}
+.hpbox .lab b{font-family:var(--disp);color:var(--red);font-size:16px}
+.hpbar{height:8px;border-radius:5px;background:#0008;overflow:hidden;margin-top:4px;border:1px solid #ffffff10}
+.hpbar i{display:block;height:100%;background:linear-gradient(90deg,#ff3d5f,#ff8a7a);box-shadow:0 0 8px #ff5d73;transition:width .5s}
+.goldpill{position:relative;display:flex;align-items:center;gap:10px;padding:6px 16px 6px 8px;border-radius:999px;
+  background:linear-gradient(180deg,#3b2a0a,#1f1606);border:1px solid #ffd27a66;box-shadow:0 0 18px #f5a52433,inset 0 1px 0 #ffe7a855}
+.goldpill b{font-family:var(--disp);font-size:24px;color:var(--gold);min-width:2ch;text-shadow:0 0 12px #f5a52488}
+.goldpill small{font-size:10px;color:#d8b46a;line-height:1.2}
+.coin{display:inline-block;width:1em;height:1em;border-radius:50%;vertical-align:-.12em;
+  background:radial-gradient(circle at 35% 30%,#fff6cf 0 12%,#ffd27a 30%,#d68a10 75%,#8a5300);box-shadow:inset 0 0 0 .08em #ffe39a88,0 0 .3em #f5a52466}
+.goldpill .coin{width:28px;height:28px}
+.delta{position:absolute;right:8px;top:-6px;font-family:var(--disp);font-weight:800;font-size:16px;pointer-events:none;animation:rise 1.1s forwards}
+.delta.up{color:var(--green)}.delta.down{color:var(--red)}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}20%{opacity:1}to{opacity:0;transform:translateY(-22px)}}
+.streak{font-size:12px;padding:4px 10px;border-radius:999px;display:none}
+.streak.win{display:block;background:#ff8a3d22;border:1px solid #ff8a3d66;color:#ffb27a}
+.hudbtns{display:flex;gap:6px}.hudbtns button{padding:6px 10px}
+.streak.lose{display:block;background:#62b6ff22;border:1px solid #62b6ff66;color:#9fd2ff}
+
+/* ===== レイアウト ===== */
+.layout{display:grid;grid-template-columns:230px minmax(0,1fr) 230px;gap:14px;margin-top:14px;align-items:start}
+@media(max-width:1080px){.layout{grid-template-columns:minmax(0,1fr) 230px}.left{grid-column:2;grid-row:1}.center{grid-column:1;grid-row:1/3}.right{grid-column:2}}
+@media(max-width:760px){.layout{grid-template-columns:minmax(0,1fr)}.left,.center,.right{grid-column:1;grid-row:auto}.center{order:-1}}
+
+/* ===== シナジー ===== */
+.syn{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:10px;margin-bottom:6px;background:#ffffff06;border:1px solid transparent}
+.syn.off{opacity:.45}
+.syn.tier1{border-color:#c9874a55;background:linear-gradient(90deg,#c9874a22,transparent)}
+.syn.tier2{border-color:#d7e1f055;background:linear-gradient(90deg,#d7e1f022,transparent)}
+.syn.tier3{border-color:#ffd27a77;background:linear-gradient(90deg,#ffd27a33,transparent);box-shadow:0 0 14px #ffd27a22}
+.hex{flex:none;width:34px;height:38px;display:grid;place-items:center;font-size:16px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:#3a3558}
+.tier1 .hex{background:linear-gradient(160deg,#f0b27a,#8a4f22)}
+.tier2 .hex{background:linear-gradient(160deg,#ffffff,#8f9bb0)}
+.tier3 .hex{background:linear-gradient(160deg,#fff3c9,#f5a524)}
+.sinfo{min-width:0;flex:1}
+.sname{display:flex;justify-content:space-between;font-weight:700;font-size:13px}
+.sname b{font-family:var(--disp);color:var(--gold)}
+.spips{display:flex;gap:3px;margin:3px 0}
+.spips span{font-size:10px;padding:0 5px;border-radius:4px;background:#ffffff10;color:var(--dim2)}
+.spips span.on{background:var(--gold);color:#2a1a00;font-weight:700}
+.sdesc{font-size:11px;color:var(--dim);line-height:1.4}
+.emb{color:var(--gold);font-size:10px}
+
+/* ===== 盤面 ===== */
+.arena{position:relative;overflow:hidden}
+.arena.strong{border-color:#ff5d7366;box-shadow:0 0 30px #ff5d7322,0 12px 32px #0009}
+.banner-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.elabel{font-weight:700;font-size:13px}
+.etag{font-size:11px;padding:3px 10px;border-radius:999px;background:#ff5d7322;border:1px solid #ff5d7366;color:#ffb0bc;display:none}
+.etag.on{display:inline-block}
+.field{display:flex;flex-direction:column;gap:6px;max-width:500px;margin:0 auto}
+@media(min-width:900px){.field{transform:perspective(1200px) rotateX(10deg);transform-origin:50% 60%}}
+.board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.vs{display:flex;align-items:center;gap:12px;margin:8px 0}
+.vs::before,.vs::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--line2),transparent)}
+.vs span{font-family:var(--disp);font-weight:800;color:var(--gold);font-size:14px;letter-spacing:.2em;padding:4px 14px;border:1px solid var(--line2);border-radius:999px;background:#0006}
+.rowhint{display:flex;justify-content:space-between;font-size:10px;color:var(--dim2);max-width:500px;margin:8px auto 0}
+
+.cell{position:relative;aspect-ratio:1/1.08;container-type:inline-size;border-radius:12px;cursor:pointer;user-select:none;min-width:0;
+  background:linear-gradient(160deg,#ffffff08,#ffffff02);border:1px solid #ffffff12;
+  box-shadow:inset 0 0 0 1px #00000040,inset 0 -10px 20px #0004;transition:transform .12s}
+.cell.empty::before{content:"";position:absolute;inset:30%;border:1px solid #ffffff12;transform:rotate(45deg);border-radius:4px}
+.board.enemy .cell.empty{background:linear-gradient(160deg,#ff5d730a,#ffffff02)}
+.cell.empty:hover{border-color:#62b6ff66;box-shadow:inset 0 0 18px #62b6ff22}
+.cell.unit{--cc:var(--c1);border:1px solid var(--cc);
+  background:radial-gradient(ellipse at 50% 35%,color-mix(in srgb,var(--cc) 38%,transparent),transparent 70%),linear-gradient(170deg,color-mix(in srgb,var(--cc) 30%,#14112a),#0d0b1c 75%);
+  box-shadow:0 0 0 1px #0006,0 6px 14px #0007,inset 0 1px 0 #ffffff30,0 0 12px color-mix(in srgb,var(--cc) 30%,transparent)}
+.cell.unit:hover{transform:translateY(-3px)}
+.c1{--cc:var(--c1)}.c2{--cc:var(--c2)}.c3{--cc:var(--c3)}.c4{--cc:var(--c4)}.c5{--cc:var(--c5)}
+.cell.kcur{outline:2px dashed var(--blue);outline-offset:3px}
+.cell.sel{outline:2px solid var(--gold);outline-offset:2px;box-shadow:0 0 22px #ffd27a77}
+.portrait{position:absolute;inset:14% 0 30%;display:grid;place-items:center;font-size:34cqw;text-shadow:0 4px 6px #000a}
+.portrait img{width:78%;height:100%;object-fit:contain}
+.enemy .portrait img{transform:scaleX(-1)}
+.nm{position:absolute;left:0;right:0;bottom:0;padding:12px 4px 5px;font-size:10.5px;font-weight:700;text-align:center;line-height:1.2;
+  background:linear-gradient(180deg,transparent,#000c 55%);border-radius:0 0 11px 11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stars{position:absolute;top:4px;left:6px;font-size:11px;letter-spacing:-1px;color:var(--gold);text-shadow:0 0 6px #f5a524,0 1px 1px #000}
+.stars.s2{color:#dfe9ff;text-shadow:0 0 6px #9fc5ff,0 1px 1px #000}
+.stars.s3{color:#ffe28a;text-shadow:0 0 8px #ff9d00,0 0 2px #fff}
+.cell.st3::after{content:"";position:absolute;inset:-1px;border-radius:12px;box-shadow:0 0 22px var(--cc);opacity:.3;pointer-events:none;animation:glow 1.6s ease-in-out infinite alternate;will-change:opacity}
+@keyframes glow{to{opacity:1}}
+.its{position:absolute;top:4px;right:4px;display:flex;flex-direction:column;gap:2px}
+.its i{font-style:normal;font-size:10px;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:#000a;border:1px solid var(--line2)}
+.its i.rm{cursor:pointer;border-color:var(--gold)}.its i.rm:hover{background:#ffd27a55;box-shadow:0 0 6px var(--gold)}
+.its i.lock{opacity:.55}
+.bars{position:absolute;left:7%;right:7%;bottom:7%;display:flex;flex-direction:column;gap:2px}
+.cell.fighting .nm{display:none}
+.cell.fighting .portrait{inset:10% 0 22%}
+.stars{font-size:clamp(9px,12cqw,13px)!important}
+.its i{width:clamp(13px,19cqw,20px)!important;height:clamp(13px,19cqw,20px)!important;font-size:clamp(8px,11cqw,11px)!important}
+.nm{font-size:clamp(9px,11cqw,12px)!important}
+@media(max-width:760px){
+  .hud{gap:10px 14px;padding:10px 12px}.logo b{font-size:18px}
+  .track{order:5;flex-basis:100%}.hpbox{flex:1;min-width:120px}
+  .goldpill{padding:4px 12px 4px 6px}.goldpill .coin{width:22px;height:22px}.goldpill b{font-size:20px}
+  .pip{width:10px;height:10px}
+}
+.bar{height:6px;background:#000c;border-radius:3px;overflow:hidden;position:relative;border:1px solid #ffffff14}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#2fcf86,#7cf5bd);transition:width .2s}
+.enemy .bar i{background:linear-gradient(90deg,#e8364f,#ff8a8a)}
+.bar b{position:absolute;right:0;top:0;height:100%;background:#e6f2ffcc}
+.ebar{height:3px;background:#000c;border-radius:2px;overflow:hidden}.ebar i{display:block;height:100%;background:var(--blue);box-shadow:0 0 4px var(--blue);transition:width .2s}
+.dead{filter:grayscale(1) brightness(.4);opacity:.45;transform:scale(.94)!important}
+.acting{transform:translateY(-6px) scale(1.06)!important;box-shadow:0 0 24px var(--gold),0 0 0 2px var(--gold)!important;z-index:2}
+.hurt{animation:shake .25s}
+@keyframes shake{25%{translate:-4px 0}75%{translate:4px 0}}
+.float{position:absolute;top:18%;font-family:var(--disp);font-weight:800;font-size:17px;pointer-events:none;animation:up .9s forwards;text-shadow:0 2px 0 #000,0 0 6px #000;z-index:3;white-space:nowrap}
+.float.big{font-size:23px}
+@keyframes up{0%{transform:translateY(4px) scale(.6);opacity:0}20%{transform:translateY(-4px) scale(1.15);opacity:1}100%{transform:translateY(-30px) scale(1);opacity:0}}
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5}
+
+/* ===== ベンチ・アイテム ===== */
+.benchwrap{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.benchwrap .ttl{margin-bottom:8px}
+.bench{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px;max-width:600px;margin:0 auto}
+.bench .cell{aspect-ratio:1/1}
+/* PC: 1画面に収める（盤面サイズを画面の高さから決める） */
+@media(min-width:761px){
+  .field,.rowhint{max-width:clamp(250px,calc((100vh - 515px) * .92),500px)}
+  .left,.right{max-height:calc(100vh - 280px);overflow-y:auto;scrollbar-width:thin}
+}
+/* 高さが低い画面（1280×720など）向けの詰めたレイアウト */
+@media(min-width:761px) and (max-height:820px){
+  #app{padding-top:8px}.hud{padding:6px 16px}.logo b{font-size:18px}.goldpill b{font-size:20px}.goldpill .coin{width:22px;height:22px}
+  .layout{margin-top:8px}.panel{padding:9px 12px}.banner-top{margin-bottom:4px}.vs{margin:4px 0}.rowhint{display:none!important}
+  .benchwrap{margin-top:6px;padding-top:6px}.benchwrap .ttl{display:none}.bench{max-width:440px}
+  .dock{margin-top:8px;padding:8px 16px 10px}.card{min-height:92px;padding:5px 5px 4px}.card .portrait{font-size:24px;height:30px}
+  .lvnum{width:40px;height:44px;font-size:19px}button.fight{padding:8px}
+  .field{max-width:clamp(200px,calc((100vh - 400px) * .92),500px)}
+  .left,.right{max-height:calc(100vh - 200px)}
+}
+.bench .nm{font-size:9.5px}
+.inv{display:flex;gap:6px;flex-wrap:wrap;min-height:34px}
+.item{display:flex;align-items:center;gap:6px;padding:5px 10px 5px 5px;border-radius:999px;cursor:pointer;font-size:12px;
+  background:linear-gradient(180deg,#2f2858,#1d1838);border:1px solid var(--line2);transition:transform .12s}
+.item i{font-style:normal;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:#000a}
+.item:hover{transform:translateY(-2px);border-color:var(--gold)}
+.item.sel{border-color:var(--gold);box-shadow:0 0 14px #ffd27a66}
+.empty-note{font-size:12px;color:var(--dim2);padding:6px 0}
+/* ===== ドラッグ ===== */
+.cell.unit,.item{cursor:grab;touch-action:none}
+.drag-ghost{position:fixed!important;z-index:30;pointer-events:none;transform:translate(-50%,-55%) rotate(-3deg) scale(1.08)!important;opacity:.93;box-shadow:0 18px 30px #000c!important;margin:0;aspect-ratio:auto}
+.dragsrc{opacity:.25}
+body.dragging,body.dragging *{cursor:grabbing!important}
+.cell.drop{outline:2px dashed var(--gold);outline-offset:2px;background:#ffd27a14}
+.shopwrap{position:relative}
+body.dragging .shopwrap[data-sell]::after{content:attr(data-sell);position:absolute;inset:-4px;display:grid;place-items:center;border-radius:12px;border:2px dashed #ff5d7388;background:#2a0d18e6;color:#ffb0bc;font-weight:900;font-size:18px;letter-spacing:.05em;z-index:2}
+body.dragging .shopwrap.drop::after{border-color:var(--gold);color:var(--gold);background:#2a1d08eb}
+/* ===== ツールチップ ===== */
+#tt{position:fixed;z-index:15;pointer-events:none;width:260px;padding:12px;border-radius:12px;background:#100c24f7;border:1px solid var(--line2);box-shadow:0 14px 34px #000c;font-size:12px;display:none}
+#tt.on{display:block}
+.tth{display:flex;gap:10px;align-items:center;padding-bottom:8px;border-bottom:1px solid #ffffff14}
+.tti{flex:none;width:42px;height:42px;border-radius:10px;display:grid;place-items:center;font-size:24px;border:1px solid var(--cc);background:radial-gradient(circle,color-mix(in srgb,var(--cc) 40%,transparent),#0d0b1c)}
+.tti img{width:36px;height:36px;object-fit:contain}
+.tth b{font-size:14px}.ttsub{font-size:11px;color:var(--dim)}
+#tt .stars{position:static;display:inline;font-size:12px!important}
+.ttstats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0}
+.ttstats div{background:#ffffff08;border-radius:8px;padding:5px 4px;text-align:center}
+.ttstats small{display:block;font-size:10px;color:var(--dim)}.ttstats b{font-family:var(--disp);font-size:13px}
+.tttr{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}.tttr span{background:#ffffff10;padding:2px 8px;border-radius:999px;font-size:11px}
+.tttr span.on{background:#ffd27a33;color:var(--gold)}
+.ttsk{color:#d6cff5;line-height:1.5}.ttsk b{color:var(--gold)}
+.ttit{margin-top:8px;padding-top:8px;border-top:1px solid #ffffff14;line-height:1.6;color:var(--dim)}.ttit b{color:var(--text)}
+.ttfoot{margin-top:8px;padding-top:6px;border-top:1px solid #ffffff10;font-size:10.5px;color:var(--dim2);line-height:1.5}
+.ttfoot b{color:var(--gold)}
+#tip{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);width:max-content;max-width:min(92%,760px);z-index:7;
+  font-size:12px;color:#e6e0ff;padding:8px 14px;border-radius:10px;background:#0d0a1ef2;border:1px solid var(--line2);border-left:3px solid var(--gold);box-shadow:0 8px 20px #000a;display:none}
+#tip.on{display:block}
+
+/* ===== 右パネル ===== */
+.kv{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px dashed #ffffff10;color:var(--dim)}
+.kv b{color:var(--text);font-weight:500}.kv b.g{color:var(--gold)}.kv b.r{color:var(--red)}
+#log{font-size:11px;color:var(--dim);max-height:260px;overflow:auto;line-height:1.6}
+#log div{padding:2px 0;border-bottom:1px solid #ffffff08}
+#log div:first-child{color:var(--text)}
+
+/* ===== ドック（ショップ） ===== */
+.dock{position:sticky;bottom:0;z-index:6;margin:14px -16px 0;padding:12px 16px 14px;
+  background:linear-gradient(180deg,#0f0c22,#08071a);border-top:1px solid var(--line2);box-shadow:0 -10px 30px #0008;
+  display:grid;grid-template-columns:200px minmax(0,1fr) 210px;gap:14px;align-items:stretch}
+@media(max-width:1080px){.dock{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.shopwrap{grid-column:1/3;grid-row:1}}
+@media(max-width:760px){.dock{position:relative;grid-template-columns:minmax(0,1fr)}.shopwrap{grid-column:1}}
+.lvbox{display:flex;flex-direction:column;justify-content:space-between;gap:8px}
+.lvrow{display:flex;align-items:center;gap:10px}
+.lvnum{width:46px;height:50px;display:grid;place-items:center;font-family:var(--disp);font-weight:800;font-size:22px;color:#1a1000;
+  clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:linear-gradient(160deg,#fff3c9,#f5a524)}
+.lvinfo{flex:1;font-size:11px;color:var(--dim)}
+.expbar{height:7px;background:#000a;border-radius:4px;overflow:hidden;margin:4px 0;border:1px solid #ffffff10}
+.expbar i{display:block;height:100%;background:linear-gradient(90deg,#5b8cff,#9fc5ff);transition:width .3s}
+.shop{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;height:100%}
+@media(max-width:560px){.shop{grid-template-columns:repeat(3,minmax(0,1fr))}.bench{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.card{--cc:var(--c1);position:relative;border-radius:12px;cursor:pointer;overflow:hidden;min-width:0;min-height:112px;padding:7px 6px 6px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;border:1px solid var(--cc);
+  background:radial-gradient(ellipse at 50% 30%,color-mix(in srgb,var(--cc) 35%,transparent),transparent 65%),linear-gradient(170deg,color-mix(in srgb,var(--cc) 28%,#14112a),#0b0a18 80%);
+  box-shadow:0 8px 18px #0008,inset 0 1px 0 #ffffff30;transition:transform .15s}
+.card:hover{transform:translateY(-5px);box-shadow:0 14px 26px #000a,0 0 18px color-mix(in srgb,var(--cc) 50%,transparent)}
+.card.c4::after,.card.c5::after{content:"";position:absolute;top:0;bottom:0;left:0;width:60%;background:linear-gradient(115deg,transparent 20%,#ffffff38 50%,transparent 80%);transform:translateX(-120%);animation:shine 3.5s linear infinite;pointer-events:none;will-change:transform}
+@keyframes shine{60%,100%{transform:translateX(260%)}}
+.card.sold{visibility:hidden}
+.card.poor{filter:grayscale(.8) brightness(.6)}
+.card .portrait{position:static;font-size:30px;height:40px;width:100%}
+.card .cname{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.card .ctr{font-size:10px;color:#cfc8ee;display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
+.card .ctr span{padding:0 5px;border-radius:4px;background:#0006}
+.card .price{margin-top:auto;font-family:var(--disp);font-weight:800;font-size:15px;color:var(--gold);display:flex;align-items:center;gap:4px}
+.card .up{will-change:transform;position:absolute;top:6px;left:6px;font-size:10px;font-weight:900;padding:1px 6px;border-radius:999px;color:#1a1000;background:linear-gradient(180deg,#fff3c9,#f5a524);box-shadow:0 0 10px #f5a524;animation:pulse 1s ease-in-out infinite alternate}
+.card .k{font-family:"Noto Sans JP";font-size:9px;font-weight:400;color:var(--dim);margin-left:2px}
+.card .own{position:absolute;top:6px;right:6px;font-size:10px;color:var(--gold)}
+@keyframes pulse{to{transform:scale(1.12)}}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-content:stretch}
+button{font-family:inherit;background:linear-gradient(180deg,#2c2650,#1c1838);color:var(--text);border:1px solid var(--line2);border-radius:10px;padding:8px 10px;cursor:pointer;font-size:12px;font-weight:500;transition:transform .1s,border-color .1s,box-shadow .1s}
+button:hover:not(:disabled){border-color:var(--gold);box-shadow:0 0 12px #ffd27a33}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.35;cursor:default}
+button .k{font-size:9px;color:var(--dim);margin-left:4px}
+button.fight{grid-column:1/3;font-family:var(--disp);font-weight:800;font-size:17px;letter-spacing:.12em;padding:12px;color:#241500;border:none;
+  background:linear-gradient(180deg,#fff0bf,#ffd27a 40%,#f5a524);box-shadow:0 0 22px #f5a52477,inset 0 -3px 0 #b66d00}
+button.fight{position:relative}
+button.fight .k{color:#7a4a00;letter-spacing:0;font-family:"Noto Sans JP"}
+button.fight::after{content:"";position:absolute;inset:0;border-radius:10px;box-shadow:0 0 34px #f5a524aa;opacity:0;pointer-events:none}
+button.fight:not(:disabled)::after{animation:breathe 2s ease-in-out infinite;will-change:opacity}
+@keyframes breathe{50%{opacity:1}}
+.lvbox button{width:100%}
+
+/* ===== オーバーレイ・バナー ===== */
+.overlay{position:fixed;inset:0;background:radial-gradient(circle,#140f2ecc,#000e);display:flex;align-items:center;justify-content:center;z-index:9;padding:16px;animation:fade .25s}
+@keyframes fade{from{opacity:0}}
+.overlay .box{text-align:center;max-width:760px;width:100%}
+.overlay h2{font-family:var(--disp);font-weight:800;font-size:30px;margin:0;letter-spacing:.08em;
+  background:linear-gradient(180deg,#fff3c9,var(--gold) 50%,var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.overlay .sub{color:var(--dim);font-size:13px;margin-top:6px}
+.choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:22px;perspective:900px}
+@media(max-width:620px){.choices{grid-template-columns:minmax(0,1fr)}}
+.choice{position:relative;border-radius:16px;padding:22px 14px 18px;cursor:pointer;
+  background:radial-gradient(ellipse at 50% 0%,#b26bff33,transparent 60%),linear-gradient(180deg,#2a2152,#141029);
+  border:1px solid #b26bff66;box-shadow:0 14px 30px #000a,inset 0 1px 0 #ffffff25;
+  animation:flip .5s backwards;transition:transform .15s,box-shadow .15s}
+.choice:nth-child(2){animation-delay:.1s}.choice:nth-child(3){animation-delay:.2s}
+@keyframes flip{from{transform:rotateY(90deg);opacity:0}}
+.choice:hover{transform:translateY(-6px);box-shadow:0 20px 40px #000c,0 0 26px #b26bff66}
+.choice.risk{border-color:#ff5d7388;background:radial-gradient(ellipse at 50% 0%,#ff5d7333,transparent 60%),linear-gradient(180deg,#3a1a2c,#170c16)}
+.choice.risk::before{content:"HIGH RISK";position:absolute;top:10px;right:10px;font-family:var(--disp);font-size:9px;letter-spacing:.1em;color:#ffb0bc;border:1px solid #ff5d7388;border-radius:999px;padding:1px 7px}
+.choice .ci{font-size:40px;filter:drop-shadow(0 6px 10px #000)}
+.choice h3{margin:10px 0 6px;font-size:16px}
+.choice p{margin:0;font-size:12px;color:#c9c2ea;line-height:1.5}
+.result{padding:28px;border-radius:18px;background:linear-gradient(180deg,#221b45,#100c22);border:1px solid var(--line2);max-width:380px!important}
+.result .stats{display:flex;justify-content:center;gap:22px;margin:18px 0}
+.result .stats div{font-size:11px;color:var(--dim)}.result .stats b{display:block;font-family:var(--disp);font-size:24px;color:var(--text)}
+/* ===== ヘルプ ===== */
+.overlay .box.help{text-align:left}
+.help{position:relative;max-width:780px!important;max-height:86vh;overflow-y:auto;padding:22px 26px;border-radius:18px;
+  background:linear-gradient(180deg,#221b45,#100c22);border:1px solid var(--line2);box-shadow:0 20px 50px #000c;scrollbar-width:thin}
+.help h2{font-size:24px!important;text-align:center}
+.help h3{font-size:13px;color:var(--gold);margin:16px 0 6px;letter-spacing:.05em}
+.help p,.help li{font-size:12.5px;line-height:1.7;color:#d6cff5;margin:0}
+.help ul{margin:0;padding-left:1.3em}
+.help b{color:var(--text)}
+.help table{width:100%;border-collapse:collapse;font-size:12px;color:#d6cff5}
+.help td{padding:4px 6px;border-bottom:1px dashed #ffffff14;vertical-align:top}
+.help td:first-child{white-space:nowrap;color:var(--text)}
+.help kbd{display:inline-block;min-width:1.6em;padding:0 5px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:5px;background:#0006;font-family:inherit;font-size:11px;text-align:center;color:var(--text)}
+.help .close{position:absolute;top:12px;right:12px;padding:4px 10px}
+.help .cols{display:grid;grid-template-columns:1fr 1fr;gap:0 22px}
+@media(max-width:700px){.help .cols{grid-template-columns:1fr}}
+.bestline{font-size:12px;color:#d6cff5;line-height:1.7;margin:-4px 0 16px}.bestline small{color:var(--dim)}
+.newbest{color:var(--gold);font-size:15px;text-shadow:0 0 10px #f5a52488}
+.result button{font-family:var(--disp);font-weight:800;padding:10px 26px;font-size:15px;color:#241500;border:none;background:linear-gradient(180deg,#fff0bf,#f5a524)}
+#banner{position:fixed;left:0;right:0;top:38%;z-index:8;pointer-events:none;text-align:center;display:none}
+#banner.on{display:block;animation:bannerIn 1.5s forwards}
+#banner .band{padding:16px 0;background:linear-gradient(90deg,transparent,#000d 20%,#000d 80%,transparent)}
+#banner b{display:block;font-family:var(--disp);font-weight:800;font-size:46px;letter-spacing:.2em;line-height:1.1}
+#banner span{display:block;font-size:13px;color:#d6cff5;margin-top:4px;letter-spacing:.06em}
+#banner.win b{background:linear-gradient(180deg,#fff3c9,var(--gold) 50%,var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 16px #f5a524aa)}
+#banner.lose b{color:#ff8a9a;text-shadow:0 0 16px #ff3d5f}
+#banner.info b{color:#fff;text-shadow:0 0 16px #62b6ff}
+@keyframes bannerIn{0%{opacity:0;transform:scaleY(.2)}12%{opacity:1;transform:scaleY(1)}80%{opacity:1}100%{opacity:0}}
+@media(max-width:560px){#banner b{font-size:32px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="panel hud">
+    <div class="logo"><b>COIN WARS</b><span>コイン・ウォーズ</span></div>
+    <div class="track"><div class="lab">ROUND <b id="round"></b> / 20<span id="best" class="bestmini"></span></div><div class="pips" id="pips"></div></div>
+    <div class="hpbox"><div class="lab"><span>HP</span><b id="hp"></b></div><div class="hpbar"><i id="hpbar"></i></div></div>
+    <div class="streak" id="streak"></div>
+    <div class="goldpill" id="goldpill"><span class="coin"></span><div><b id="gold"></b></div><small>次の利子<br><span id="nextint"></span></small></div>
+    <div class="hudbtns"><button id="helpbtn" title="遊び方（? / H キー）">？ 遊び方</button><button id="mute" title="効果音のオン/オフ（M）"></button><button id="restart" title="最初からやり直す">↺ 最初から</button></div>
+  </header>
+
+  <div class="layout">
+    <aside class="left panel"><div class="ttl">Synergy <small>シナジー</small></div><div id="syn"></div></aside>
+
+    <section class="center">
+      <div class="panel arena" id="battleArea">
+        <div class="banner-top"><div class="elabel" id="enemyLabel"></div><div class="etag" id="etag"></div></div>
+        <div class="field">
+          <div class="board enemy" id="enemyBoard"></div>
+          <div class="vs"><span>VS</span></div>
+          <div class="board" id="playerBoard"></div>
+        </div>
+        <div class="rowhint"><span>▲ 前衛：近接攻撃に狙われやすい</span><span>▼ 後衛</span></div>
+        <div class="benchwrap">
+          <div class="ttl">Bench <small>ベンチ</small></div>
+          <div class="bench" id="bench"></div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="right">
+      <div class="panel"><div class="ttl">Items <small>選んでキャラに装備（1体3個）</small></div><div class="inv" id="inv"></div></div>
+      <div class="panel" style="margin-top:14px"><div class="ttl">Status <small>強化・状態</small></div><div id="buffs"></div></div>
+      <div class="panel" style="margin-top:14px"><div class="ttl">Income <small>次の収入</small></div><div id="rules"></div></div>
+      <div class="panel" style="margin-top:14px"><div class="ttl">Log</div><div id="log"></div></div>
+    </aside>
+  </div>
+
+  <footer class="dock">
+    <div id="tip"></div>
+    <div class="lvbox">
+      <div class="lvrow"><div class="lvnum" id="level"></div>
+        <div class="lvinfo">経験値 <span id="exp"></span><div class="expbar"><i id="expbar"></i></div>配置 <b id="cap" style="color:var(--text)"></b></div></div>
+      <button id="buyexp">📈 経験値 +4 <span class="coin"></span>4<span class="k">F</span></button>
+    </div>
+    <div class="shopwrap"><div class="shop" id="shop"></div></div>
+    <div class="acts">
+      <button id="reroll">🔄 更新 <span class="coin"></span>2<span class="k">D</span></button>
+      <button id="lock">🔓 ロック</button>
+      <button id="sell" disabled>💰 売却</button>
+      <button id="speed">⏩ 速度 x1</button>
+      <button id="fight" class="fight">BATTLE<span class="k">Space</span></button>
+    </div>
+  </footer>
+</div>
+<svg id="fx"></svg>
+<div id="tt"></div>
+<div id="banner"><div class="band"><b></b><span></span></div></div>
+
+<script>
+// ===== データ =====
+const TRAITS = {
+  knight:{name:'騎士',icon:'⚔',th:[2,4],desc:['騎士の攻撃+15%','騎士の攻撃+40%、受けるダメージ-15%']},
+  guard:{name:'守護',icon:'🛡',th:[2,3],desc:['守護の最大HP+20%','守護の最大HP+50%、味方全員に開幕シールド(HP15%)']},
+  mage:{name:'魔導',icon:'🔮',th:[2,4],desc:['魔導のスキル威力+30%','魔導のスキル威力+80%、2回行動ごとにスキル']},
+  wind:{name:'疾風',icon:'🌪',th:[2,3],desc:['疾風の速度+20%','疾風の速度+50%、開幕に即行動']},
+  rich:{name:'豪商',icon:'💰',th:[2,4,5],desc:['毎ラウンド+1🪙','毎ラウンド+3🪙、豪商は所持金に応じて攻撃UP(最大+50%)','毎ラウンド+6🪙、所持金ボーナス2倍(最大+100%)']},
+};
+// skill: strike単体 / aoe全体 / heal回復 / guard自己シールド / gold攻撃+コイン / bigmoney所持金比例
+const UNITS = {
+  swordman:{name:'見習い剣士',icon:'🗡',cost:1,traits:['knight'],hp:550,atk:50,spd:100,range:1,skill:'strike'},
+  shield:  {name:'盾持ち',icon:'🛡',cost:1,traits:['guard'],hp:750,atk:35,spd:85,range:1,skill:'guard'},
+  archer:  {name:'弓兵',icon:'🏹',cost:1,traits:['wind'],hp:420,atk:52,spd:110,range:2,skill:'strike'},
+  spark:   {name:'火花の魔導士',icon:'✨',cost:1,traits:['mage'],hp:400,atk:42,spd:95,range:2,skill:'aoe'},
+  peddler: {name:'露店商',icon:'🧺',cost:1,traits:['rich'],hp:480,atk:40,spd:100,range:2,skill:'gold'},
+  captain: {name:'傭兵隊長',icon:'🪖',cost:2,traits:['knight','rich'],hp:700,atk:62,spd:100,range:1,skill:'gold'},
+  dancer:  {name:'風の踊り子',icon:'💃',cost:2,traits:['wind'],hp:600,atk:58,spd:135,range:1,skill:'strike'},
+  healer:  {name:'治癒術士',icon:'💚',cost:2,traits:['guard','mage'],hp:550,atk:45,spd:95,range:2,skill:'heal'},
+  banker:  {name:'銀行家',icon:'🏦',cost:2,traits:['rich','mage'],hp:520,atk:55,spd:95,range:2,skill:'aoe'},
+  paladin: {name:'聖騎士',icon:'🌟',cost:3,traits:['knight','guard'],hp:1000,atk:70,spd:95,range:1,skill:'guard'},
+  witch:   {name:'雷鳴の魔女',icon:'⚡',cost:3,traits:['mage','wind'],hp:650,atk:72,spd:115,range:2,skill:'aoe'},
+  golem:   {name:'金庫番ゴーレム',icon:'🗿',cost:3,traits:['rich','guard'],hp:1200,atk:60,spd:80,range:1,skill:'gold'},
+  saint:   {name:'黄金の剣聖',icon:'👑',cost:4,traits:['knight','rich'],hp:1100,atk:110,spd:110,range:1,skill:'strike'},
+  seer:    {name:'星詠み',icon:'🔭',cost:4,traits:['mage'],hp:800,atk:95,spd:105,range:2,skill:'aoe'},
+  tycoon:  {name:'富豪王',icon:'💎',cost:5,traits:['rich','knight'],hp:1500,atk:130,spd:105,range:1,skill:'bigmoney'},
+  dragon:  {name:'嵐の竜',icon:'🐉',cost:5,traits:['wind','mage'],hp:1300,atk:120,spd:125,range:2,skill:'aoe'},
+};
+const SKILL_TXT={strike:'強撃: 単体に2.2倍ダメージ',aoe:'範囲: 敵全体に0.8倍ダメージ',heal:'治癒: 最もHPが低い味方を回復',guard:'鉄壁: 自身にシールド',gold:'集金: 攻撃しつつ 1🪙 獲得',bigmoney:'財力: 所持コインに比例した大ダメージ'};
+const ITEMS={
+  blade:  {name:'鋭い剣',icon:'🔪',desc:'攻撃+20%'},
+  armor:  {name:'重鎧',icon:'🥋',desc:'最大HP+25%'},
+  boots:  {name:'疾風の靴',icon:'👟',desc:'速度+15%'},
+  tome:   {name:'魔導書',icon:'📘',desc:'スキル威力+35%'},
+  fang:   {name:'吸血の牙',icon:'🦷',desc:'与ダメージの20%を回復'},
+  amulet: {name:'守りの護符',icon:'🧿',desc:'開幕に最大HP30%のシールド'},
+  crystal:{name:'エネルギー結晶',icon:'💠',desc:'開幕からスキルゲージ+2'},
+  purse:  {name:'金貨袋',icon:'👛',desc:'敵を倒すたび+1🪙'},
+};
+const STAR_MULT=[0,1,1.8,3.2];
+const ODDS=[ // レベルごとのコスト1〜5の出現率(%)
+  null,[100,0,0,0,0],[100,0,0,0,0],[75,25,0,0,0],[55,30,15,0,0],[45,33,20,2,0],
+  [30,40,25,5,0],[16,28,35,18,3],[12,18,32,28,10],[8,12,25,32,23]];
+const EXP_NEED=[0,2,4,6,10,20,30,40,56,0]; // 次レベルまで
+const MAX_LV=9, MAX_ROUND=20, INV_MAX=10;
+const UNEQUIP_WAIT=2;                  // 装備してから外せるようになるまでのラウンド数
+const EVENT_ROUNDS=[2,5,8,11,14,17];   // このラウンドの準備前にイベント
+const STRONG_ROUNDS=[5,10,15,20];      // 強敵ラウンド
+const LOAN={gold:25,rounds:5,pay:6};
+const MAX_ACTIONS=240;                 // これを超えたら時間切れ（引き分け）
+
+// ===== 画像（img/キー.png があれば使い、なければ絵文字） =====
+const IMG={};
+for(const k in UNITS){const im=new Image();im.onload=()=>{IMG[k]=true;if(S)render()};im.src=`img/${k}.png`}
+
+// ===== 状態 =====
+let S, uid=1, lastGold=null;
+const $=id=>document.getElementById(id);
+function newGame(){
+  S={hp:100,gold:6,level:1,exp:0,round:1,streak:0,shop:[],locked:false,
+     board:Array(8).fill(null),bench:Array(8).fill(null),enemy:[],sel:null,selItem:null,phase:'plan',speed:S?S.speed:1,log:[],
+     items:[],buffs:{atk:0,hp:0},emblems:{},interestCap:5,debt:0,results:[]};
+  lastGold=null;
+  S.board[1]=mk('swordman',1);
+  rollShop(); makeEnemy(); render();
+  log('ゲーム開始！ユニットを買って盤面に配置しよう。');
+}
+const mk=(key,star,items=[])=>({id:uid++,key,star,items});
+
+// ===== セーブ（準備中・イベント選択中の状態を localStorage に保存） =====
+const SAVE_KEY='coinwars-save',SAVE_VER=1;
+function save(){
+  if(S.phase!=='plan'&&S.phase!=='event')return; // 戦闘中は保存しない＝リロードすると戦闘前から再開
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:SAVE_VER,S:{...S,sel:null,selItem:null}}))}catch{}
+}
+function clearSave(){try{localStorage.removeItem(SAVE_KEY)}catch{}}
+
+// ===== ベスト記録（ゲーム終了ごとに更新。クリアは残りHPが多いほど上） =====
+const BEST_KEY='coinwars-best';
+let BEST=null; // {best:{round,cleared,hp,gold,date}, plays, clears}
+try{BEST=JSON.parse(localStorage.getItem(BEST_KEY))}catch{}
+const bestScore=b=>b?(b.cleared?100+b.hp:b.round):-1;
+const bestText=b=>b.cleared?`全ラウンド制覇（残りHP ${b.hp}）`:`ラウンド${b.round}まで到達`;
+function recordBest(win){
+  const cur={round:S.round,cleared:win,hp:Math.max(0,S.hp),gold:S.gold,date:new Date().toLocaleDateString('ja-JP')};
+  const isNew=bestScore(cur)>bestScore(BEST&&BEST.best);
+  BEST={best:isNew?cur:BEST.best,plays:(BEST?BEST.plays:0)+1,clears:(BEST?BEST.clears:0)+(win?1:0)};
+  try{localStorage.setItem(BEST_KEY,JSON.stringify(BEST))}catch{}
+  return isNew;
+}
+function loadGame(){
+  let d;try{d=JSON.parse(localStorage.getItem(SAVE_KEY))}catch{return false}
+  if(!d||d.v!==SAVE_VER||!d.S)return false;
+  S=d.S;lastGold=null;
+  S.results=S.results.map(x=>x===true?'win':x===false?'lose':x); // 引き分け導入前のセーブは勝敗を true/false で記録していた
+  uid=1+Math.max(0,...[...S.board,...S.bench,...S.enemy].filter(Boolean).map(u=>u.id));
+  $('speed').textContent='⏩ 速度 x'+S.speed;
+  render();log(`セーブデータから再開（ラウンド${S.round}）`);
+  if(S.phase==='event')showEvent();
+  return true;
+}
+
+// ===== 効果音（Web Audio で合成。M キーでミュート） =====
+let AC=null,muted=false;
+try{muted=localStorage.getItem('coinwars-mute')==='1'}catch{}
+const SFX={ // [周波数, 開始秒, 長さ秒, 波形]
+  hit:[[180,0,.05,'square']],
+  skill:[[520,0,.08,'triangle'],[880,.06,.1,'triangle']],
+  buy:[[660,0,.07,'sine'],[990,.06,.09,'sine']],
+  coin:[[1320,0,.06,'sine'],[1760,.05,.1,'sine']],
+  reroll:[[440,0,.05,'triangle'],[550,.04,.05,'triangle'],[660,.08,.06,'triangle']],
+  merge:[[523,0,.1,'triangle'],[659,.08,.1,'triangle'],[784,.16,.1,'triangle'],[1047,.24,.25,'triangle']],
+  win:[[523,0,.14,'square'],[659,.12,.14,'square'],[784,.24,.3,'square']],
+  lose:[[392,0,.18,'sawtooth'],[330,.16,.18,'sawtooth'],[262,.32,.35,'sawtooth']],
+};
+function sfx(name){
+  if(muted)return;
+  try{
+    AC=AC||new AudioContext();const t0=AC.currentTime;
+    for(const [f,st,len,type] of SFX[name]){
+      const o=AC.createOscillator(),g=AC.createGain();
+      o.type=type;o.frequency.value=f;
+      g.gain.setValueAtTime(type==='sine'||type==='triangle'?.12:.04,t0+st);
+      g.gain.exponentialRampToValueAtTime(.001,t0+st+len);
+      o.connect(g).connect(AC.destination);o.start(t0+st);o.stop(t0+st+len+.02);
+    }
+  }catch{}
+}
+function toggleMute(){
+  muted=!muted;try{localStorage.setItem('coinwars-mute',muted?'1':'0')}catch{}
+  $('mute').textContent=muted?'🔇':'🔊';
+}
+function log(t){S.log.unshift(t);S.log=S.log.slice(0,60);$('log').innerHTML=S.log.map(x=>`<div>${x}</div>`).join('')}
+function rand(a){return a[Math.floor(Math.random()*a.length)]}
+function shuffle(a){return a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(p=>p[1])}
+function randCost(lv){
+  const o=ODDS[lv];let r=Math.random()*100;
+  for(let i=0;i<5;i++){if(r<o[i])return i+1;r-=o[i]}return 1;
+}
+const keysOfCost=c=>Object.keys(UNITS).filter(k=>UNITS[k].cost===c);
+function rollShop(){S.shop=[];for(let i=0;i<5;i++)S.shop.push(rand(keysOfCost(randCost(S.level))))}
+const cap=()=>S.level;
+const onBoard=()=>S.board.filter(Boolean).length;
+const interest=()=>Math.min(S.interestCap,Math.floor(S.gold/10));
+const owned=()=>[...S.board,...S.bench].filter(Boolean);
+function addItem(key){
+  key=key||rand(Object.keys(ITEMS));
+  if(S.items.length>=INV_MAX){S.gold+=2;log(`アイテム欄が満杯のため ${ITEMS[key].name} を2🪙に換金`);return}
+  S.items.push(key);log(`アイテム獲得: ${ITEMS[key].icon}${ITEMS[key].name}`);
+}
+function returnItems(list){list.forEach(k=>addItem(k))}
+
+// ===== シナジー =====
+function traitCounts(units,withEmblems){
+  const seen=new Set(),cnt={};
+  for(const u of units){if(!u||seen.has(u.key))continue;seen.add(u.key);for(const t of UNITS[u.key].traits)cnt[t]=(cnt[t]||0)+1}
+  if(withEmblems)for(const t in S.emblems)cnt[t]=(cnt[t]||0)+S.emblems[t];
+  return cnt;
+}
+function traitLevel(t,n){let l=0;TRAITS[t].th.forEach((th,i)=>{if(n>=th)l=i+1});return l}
+
+// ===== 購入・合成 =====
+function buy(i){
+  if(S.phase!=='plan')return;
+  const key=S.shop[i];if(!key)return;
+  const cost=UNITS[key].cost;
+  if(S.gold<cost)return tip('コインが足りない！');
+  const slot=S.bench.indexOf(null);
+  const copies=owned().filter(u=>u.key===key&&u.star===1).length;
+  if(slot<0&&copies<2)return tip('ベンチがいっぱい！');
+  S.gold-=cost;S.shop[i]=null;sfx('buy');
+  if(slot>=0)S.bench[slot]=mk(key,1);
+  else S.bench.push(mk(key,1)); // ベンチ満杯でも合成できるなら一時的に9枠目へ（直後に合成で消える）
+  merge(key);
+  S.bench=S.bench.slice(0,8);while(S.bench.length<8)S.bench.push(null);
+  render();
+}
+function merge(key){
+  for(const star of [1,2]){
+    const locs=[];
+    S.board.forEach((u,i)=>{if(u&&u.key===key&&u.star===star)locs.push(['board',i])});
+    S.bench.forEach((u,i)=>{if(u&&u.key===key&&u.star===star)locs.push(['bench',i])});
+    if(locs.length>=3){
+      const [a,ai]=locs[0],its=[];
+      S.sel=null; // 合成でマスの中身が変わるので選択を解除
+      locs.slice(0,3).forEach(([w,i])=>{const u=S[w][i];u.items.forEach((k,j)=>its.push([k,eqRound(u,j)]));S[w][i]=null});
+      const nu=mk(key,star+1,its.slice(0,3).map(x=>x[0]));nu.eq=its.slice(0,3).map(x=>x[1]); // 装備ラウンドも引き継ぐ
+      S[a][ai]=nu;
+      returnItems(its.slice(3).map(x=>x[0]));
+      log(`${UNITS[key].name} が ★${star+1} に昇格！`);sfx('merge');
+      banner(`★${star+1}`,`${UNITS[key].name} 昇格！`,'win',900);
+    }
+  }
+}
+function sellValue(u){const c=UNITS[u.key].cost;return u.star===1?c:u.star===2?c*3-1:c*9-1}
+function sellAt(w,i){
+  const u=S[w][i];if(!u||S.phase!=='plan')return;
+  S.gold+=sellValue(u);S[w][i]=null;S.sel=null;returnItems(u.items);sfx('coin');
+  log(`${UNITS[u.key].name} を売却 (+${sellValue(u)}🪙)`);render();
+}
+function sellSel(){if(S.sel)sellAt(...S.sel)}
+function equip(idx,w,i){
+  const u=S[w][i];if(!u)return false;
+  if(u.items.length>=3){tip('このキャラはもうアイテムを持てない（最大3個）');return false}
+  const k=S.items.splice(idx,1)[0];
+  u.eq=u.items.map((_,j)=>eqRound(u,j));u.items.push(k);u.eq.push(S.round);S.selItem=null;
+  log(`${UNITS[u.key].name} に ${ITEMS[k].name} を装備`);render();return true;
+}
+// ===== アイテムの取り外し（装備から UNEQUIP_WAIT ラウンド後の準備中から外せる） =====
+// u.eq[j] は u.items[j] を装備したラウンド。記録がない（古いセーブなど）ものはすぐ外せる扱い
+const eqRound=(u,j)=>u.eq&&u.eq[j]!=null?u.eq[j]:0;
+const unequipWait=(u,j)=>Math.max(0,eqRound(u,j)+UNEQUIP_WAIT-S.round); // 外せるまでの残りラウンド
+function unequip(w,i,j){
+  const u=S[w][i];if(!u||S.phase!=='plan'||j<0||j>=u.items.length)return false;
+  const n=unequipWait(u,j);
+  if(n>0){tip(`${ITEMS[u.items[j]].icon} ${ITEMS[u.items[j]].name} はあと${n}ラウンドで外せる`);return false}
+  if(S.items.length>=INV_MAX){tip(`アイテム欄がいっぱい（${INV_MAX}個）で外せない`);return false}
+  const k=u.items.splice(j,1)[0];u.eq=u.items.map((_,x)=>eqRound(u,x>=j?x+1:x));
+  S.items.push(k);S.sel=null;sfx('coin');
+  log(`${UNITS[u.key].name} から ${ITEMS[k].name} を外した`);render();return true;
+}
+function unequipLast(w,i){ // キーボード用：外せるもののうち最後に付けたものを外す
+  const u=S[w][i];if(!u||!u.items.length)return;
+  for(let j=u.items.length-1;j>=0;j--)if(!unequipWait(u,j))return unequip(w,i,j);
+  unequip(w,i,u.items.length-1); // 外せるものがなければ残りラウンドを案内
+}
+function moveUnit(sw,si,w,i){ // 入れ替え（空きマスなら移動）
+  S.sel=null;
+  if(sw===w&&si===i){render();return}
+  const a=S[sw][si],u=S[w][i];
+  if(w==='board'&&sw==='bench'&&!u&&onBoard()>=cap()){tip(`配置上限(${cap()}体)です。レベルを上げよう`);render();return}
+  S[sw][si]=u;S[w][i]=a;render();
+}
+function clickSlot(w,i){
+  if(S.phase!=='plan')return;
+  const u=S[w][i];
+  if(S.selItem!==null){if(u)equip(S.selItem,w,i);return}
+  if(!S.sel){if(u)S.sel=[w,i];render();return}
+  moveUnit(...S.sel,w,i);
+}
+function clickItem(i){
+  if(S.phase!=='plan')return;
+  S.sel=null;S.selItem=S.selItem===i?null:i;render();
+  if(S.selItem!==null){const it=ITEMS[S.items[i]];tip(`${it.icon} ${it.name}：${it.desc} — 装備するキャラをクリック`)}
+}
+function addExp(n){
+  S.exp+=n;
+  while(S.level<MAX_LV&&S.exp>=EXP_NEED[S.level]){S.exp-=EXP_NEED[S.level];S.level++;log(`レベル${S.level}にアップ！`)}
+  if(S.level>=MAX_LV)S.exp=0;
+}
+
+// ===== イベント =====
+function eventPool(){
+  const t=rand(Object.keys(TRAITS)),T=TRAITS[t];
+  const sc=rand([2,2,3]),sk=rand(keysOfCost(sc));
+  return [
+    {ci:'💵',t:'臨時収入',d:'+12🪙',f:()=>S.gold+=12},
+    {ci:'🦈',t:'高利貸し',d:`今すぐ+${LOAN.gold}🪙。ただし次の${LOAN.rounds}ラウンド、収入-${LOAN.pay}🪙`,risk:1,f:()=>{S.gold+=LOAN.gold;S.debt+=LOAN.rounds}},
+    {ci:'📊',t:'投資家の心得',d:`利子の上限+3（現在+${S.interestCap}）`,f:()=>S.interestCap+=3},
+    {ci:UNITS[sk].icon,t:'スカウト',d:`${UNITS[sk].name}（★2）を獲得（ベンチ満杯なら${sc*3}🪙）`,f:()=>{
+      const s=S.bench.indexOf(null);if(s<0){S.gold+=sc*3;log('ベンチ満杯のためコインで受け取り')}else{S.bench[s]=mk(sk,2);merge(sk)}}},
+    {ci:'🏋',t:'鍛錬',d:'味方全員の攻撃+10%（永続）',f:()=>S.buffs.atk+=.1},
+    {ci:'🧱',t:'鉄壁の訓練',d:'味方全員の最大HP+15%（永続）',f:()=>S.buffs.hp+=.15},
+    {ci:'🎁',t:'宝箱',d:'ランダムなアイテム2個',f:()=>{addItem();addItem()}},
+    {ci:'♨',t:'休息',d:'HP+20回復',f:()=>S.hp=Math.min(100,S.hp+20)},
+    {ci:'📚',t:'特訓',d:'経験値+8',f:()=>addExp(8)},
+    {ci:T.icon,t:`${T.name}の紋章`,d:`${T.name}シナジーの人数+1（永続）`,f:()=>S.emblems[t]=(S.emblems[t]||0)+1},
+    {ci:'🎲',t:'ギャンブル',d:'50%で所持金2倍、50%で半分',risk:1,f:()=>{const w=Math.random()<.5;S.gold=w?S.gold*2:Math.floor(S.gold/2);log(w?'ギャンブル大当たり！':'ギャンブル失敗…');banner(w?'JACKPOT':'BUST',w?'所持金2倍！':'所持金が半分に…',w?'win':'lose',1100)}},
+  ];
+}
+function showEvent(){
+  S.phase='event';render();
+  const opts=shuffle(eventPool()).slice(0,3);
+  const o=document.createElement('div');o.className='overlay';
+  o.innerHTML=`<div class="box"><h2>OPPORTUNITY</h2><div class="sub">商機到来 — 1つ選んでください（所持金 <span class="coin"></span> ${S.gold}）</div>
+    <div class="choices">${opts.map((x,i)=>`<div class="choice ${x.risk?'risk':''}" data-ev="${i}"><div class="ci">${x.ci}</div><h3>${x.t}</h3><p>${x.d}</p></div>`).join('')}</div></div>`;
+  document.body.appendChild(o);
+  o.onclick=e=>{const c=e.target.closest('[data-ev]');if(!c)return;
+    const x=opts[+c.dataset.ev];x.f();log(`イベント: ${x.t}`);o.remove();
+    S.bench=S.bench.slice(0,8);S.phase='plan';render()};
+}
+
+// ===== 敵生成 =====
+function makeEnemy(){
+  const r=S.round,strong=STRONG_ROUNDS.includes(r);
+  const n=r===1?1:Math.min(8,1+Math.ceil(r/2.2)+(strong?1:0)), lv=Math.min(9,1+Math.floor(r/2.3)+(strong?1:0));
+  const units=[];
+  for(let i=0;i<n;i++){
+    const key=rand(keysOfCost(randCost(lv)));
+    let star=1;const p=Math.random()-(strong?.1:0); // 強敵は★が上がりやすい
+    if(r>=4&&p<Math.min(.85,(r-3)*.09))star=2;
+    if(r>=13&&p<(r-12)*.04)star=3;
+    const items=[];if(r>=6)for(let j=0;j<Math.floor(r/6);j++)if(Math.random()<.5)items.push(rand(Object.keys(ITEMS).filter(k=>k!=='purse')));
+    units.push(mk(key,star,items));
+  }
+  if(r===MAX_ROUND){units[0]=mk('tycoon',3,['blade','armor']);units[1]=mk('dragon',2,['tome'])}
+  const board=Array(8).fill(null),front=[],back=[];
+  units.forEach(u=>(UNITS[u.key].range===1?front:back).push(u));
+  front.forEach((u,k)=>{if(k<4)board[[1,2,0,3][k]]=u;else back.push(u)});
+  // 敵は上側なので後衛(4-7)を上の行に置く
+  back.forEach(u=>{const s=[5,6,4,7].find(x=>!board[x])??[1,2,0,3].find(x=>!board[x]);if(s!==undefined)board[s]=u});
+  S.enemy=board;
+}
+
+// ===== 戦闘 =====
+let B=null,timer=null;
+function buildFighters(board,side){
+  const P=side==='p',cnt=traitCounts(board,P),lv={};
+  for(const t in TRAITS)lv[t]=traitLevel(t,cnt[t]||0);
+  const gold=P?S.gold:20+S.round*2;
+  const fs=board.map((u,slot)=>{
+    if(!u)return null;const d=UNITS[u.key],m=STAR_MULT[u.star],has=t=>d.traits.includes(t),n=k=>u.items.filter(x=>x===k).length;
+    let hp=d.hp*m,atk=d.atk*m,spd=d.spd,skillMul=1,dr=0,need=3,gauge=Math.random()*30,shield=0;
+    if(P){atk*=1+S.buffs.atk;hp*=1+S.buffs.hp}
+    if(has('knight')){atk*=[1,1.15,1.4][lv.knight];if(lv.knight>=2)dr=.15}
+    if(has('guard'))hp*=[1,1.2,1.5][lv.guard];
+    if(has('wind')){spd*=[1,1.2,1.5][lv.wind];if(lv.wind>=2)gauge=100}
+    if(has('mage')){skillMul=[1,1.3,1.8][lv.mage];if(lv.mage>=2)need=2}
+    if(has('rich')&&lv.rich>=2)atk*=1+Math.min(.5,gold/100)*(lv.rich>=3?2:1);
+    atk*=1+.2*n('blade');hp*=1+.25*n('armor');spd*=1+.15*n('boots');skillMul+=.35*n('tome');
+    shield+=hp*.3*n('amulet');
+    return {side,slot,u,d,maxHp:hp,hp,atk,spd,skillMul,dr,need,gauge,shield,energy:Math.min(need-1,2*n('crystal')),
+      steal:.2*n('fang'),purse:n('purse'),dealt:0,alive:true};
+  });
+  if(lv.guard>=2)fs.forEach(f=>{if(f)f.shield+=f.maxHp*.15});
+  return fs;
+}
+function startBattle(){
+  if(S.phase!=='plan')return;
+  if(onBoard()===0)return tip('盤面にユニットを1体以上置いてね');
+  S.phase='battle';S.sel=null;S.selItem=null;
+  B={p:buildFighters(S.board,'p'),e:buildFighters(S.enemy,'e'),actions:0};
+  render();
+  log(`— ラウンド${S.round} 戦闘開始 —`);
+  banner(`ROUND ${S.round}`,STRONG_ROUNDS.includes(S.round)?(S.round===MAX_ROUND?'最終決戦':'強敵出現'):'BATTLE START','info',1000);
+  setTimeout(()=>{timer=setInterval(step,380/S.speed)},900/Math.sqrt(S.speed));
+}
+const alive=arr=>arr.filter(f=>f&&f.alive);
+const foesOf=f=>f.side==='p'?B.e:B.p, alliesOf=f=>f.side==='p'?B.p:B.e;
+function pickTarget(f){
+  const foes=alive(foesOf(f));if(!foes.length)return null;
+  if(f.d.range===1){
+    const front=foes.filter(x=>x.slot<4),pool=front.length?front:foes;
+    const col=f.slot%4;return pool.sort((a,b)=>Math.abs(a.slot%4-col)-Math.abs(b.slot%4-col))[0];
+  }
+  return rand(foes);
+}
+function hit(src,t,mul,big){
+  const dmg=Math.round(src.atk*mul*(0.9+Math.random()*0.2)*(1-t.dr));
+  const absorbed=Math.min(t.shield,dmg);t.shield-=absorbed;
+  t.hp-=dmg-absorbed;src.dealt+=dmg;float(t,dmg,big?'#ffd27a':'#ffffff',big);shake(t);
+  if(src.steal){const h=Math.round(dmg*src.steal);src.hp=Math.min(src.maxHp,src.hp+h)}
+  if(t.hp<=0){t.hp=0;t.alive=false;
+    if(src.purse&&src.side==='p'){S.gold+=src.purse;float(src,`+${src.purse}🪙`,'#ffd27a');renderTop()}}
+}
+function act(f){
+  f.energy=Math.min(f.need,f.energy+1);
+  let skill=f.energy>=f.need;
+  // 治癒は回復が必要な味方がいなければ温存して通常攻撃（ゲージは満タンのまま）
+  if(skill&&f.d.skill==='heal'&&!alive(alliesOf(f)).some(a=>a.hp<a.maxHp))skill=false;
+  if(skill)f.energy=0;
+  const t=pickTarget(f);if(!t)return;
+  if(!(skill&&f.d.skill==='heal'))line(f,t,skill); // 治癒は回復する味方へ光線を出す
+  if(!skill){hit(f,t,1);sfx('hit');return}
+  sfx('skill');
+  const sm=f.skillMul;
+  switch(f.d.skill){
+    case 'strike':hit(f,t,2.2*sm,1);break;
+    case 'aoe':alive(foesOf(f)).forEach(x=>{if(x!==t)line(f,x,1);hit(f,x,0.8*sm,1)});break;
+    case 'heal':{const al=alive(alliesOf(f)).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0];
+      if(al!==f)line(f,al,1,'#4fe3a4');
+      const h=Math.round(f.atk*3.5*sm);al.hp=Math.min(al.maxHp,al.hp+h);float(al,'+'+h,'#4fe3a4',1);break}
+    case 'guard':{const s=Math.round(f.maxHp*0.25*sm);f.shield+=s;float(f,'🛡'+s,'#9fd2ff');hit(f,t,1);break}
+    case 'gold':hit(f,t,1.4*sm,1);if(f.side==='p'){S.gold++;float(f,'+1🪙','#ffd27a');renderTop()}break;
+    case 'bigmoney':{const g=f.side==='p'?S.gold:20+S.round*2;hit(f,t,(1.5+g/15)*sm,1);break}
+  }
+}
+function step(){
+  B.actions++;
+  const all=[...B.p,...B.e].filter(f=>f&&f.alive);
+  let ready=all.filter(f=>f.gauge>=100);
+  if(!ready.length){ // 誰かのゲージが100に届くまで時間を進める
+    const need=Math.min(...all.map(f=>(100-f.gauge)/f.spd));
+    all.forEach(f=>f.gauge+=f.spd*need);ready=all.filter(f=>f.gauge>=99.999);
+  }
+  const f=ready.sort((a,b)=>b.gauge-a.gauge)[0];
+  f.gauge-=100;act(f);
+  updateBattle(f);
+  const pa=alive(B.p).length,ea=alive(B.e).length;
+  if(!pa||!ea||B.actions>MAX_ACTIONS){clearInterval(timer);timer=null;
+    setTimeout(()=>endBattle(!ea&&pa?'win':!pa?'lose':'draw'),700/S.speed)}
+}
+// 収入の内訳（endBattle と右パネルの見込み表示で共用）
+// streak は戦闘結果を反映した後の連勝・連敗数（見込み表示では「勝った場合」の値を渡す）
+function incomeParts(win,streak=S.streak){
+  const it=interest(),st=Math.abs(streak),sb=st>=5?2:st>=3?1:0;
+  const rb=[0,1,3,6][traitLevel('rich',traitCounts(S.board,true).rich||0)];
+  const wb=win?1:0,pay=S.debt>0?LOAN.pay:0;
+  return {it,sb,rb,wb,pay,total:5+it+sb+rb+wb-pay};
+}
+function endBattle(res){ // res: 'win' | 'lose' | 'draw'（行動数の上限で決着つかず）
+  const r=S.round,strong=STRONG_ROUNDS.includes(r),win=res==='win';
+  const ps=B.p.filter(Boolean).sort((a,b)=>b.dealt-a.dealt),mvp=ps[0];
+  if(mvp)log(`MVP: ${mvp.d.icon}${mvp.d.name}（${Math.round(mvp.dealt)}ダメージ）`);
+  if(ps.length>1)log('与ダメージ: '+ps.map(f=>`${f.d.icon}${Math.round(f.dealt)}`).join(' / '));
+  let dmg=0;
+  if(win){
+    S.streak=S.streak>0?S.streak+1:1;log(strong?'強敵に勝利！ボーナス+5🪙':'勝利！');
+    addItem();if(strong){addItem();S.gold+=5}
+  }else{
+    dmg=2+Math.floor(r/3)+alive(B.e).reduce((s,f)=>s+f.u.star+Math.floor(f.d.cost/2),0);
+    if(res==='draw'){dmg=Math.ceil(dmg/2);S.hp-=dmg;S.streak=0;log(`時間切れで引き分け… ${dmg}ダメージ`)}
+    else{S.hp-=dmg;S.streak=S.streak<0?S.streak-1:-1;log(`敗北… ${dmg}ダメージ`);if(Math.random()<.3)addItem()}
+  }
+  S.results[r]=res;
+  sfx(win?'win':'lose');
+  if(S.hp<=0)return gameOver(false);
+  if(r>=MAX_ROUND)return gameOver(win);
+  // 収入
+  const p=incomeParts(win),income=p.total;
+  if(S.debt>0)S.debt--;
+  S.gold=Math.max(0,S.gold+income);
+  log(`収入 ${income>=0?'+':''}${income}🪙 (基本5 / 利子${p.it} / 連続${p.sb} / 勝利${p.wb} / 豪商${p.rb}${p.pay?' / 返済-'+p.pay:''})`);
+  const sub=(win?(mvp?`MVP ${mvp.d.name}`:''):`HP -${dmg}`)+`　収入 ${income>=0?'+':''}${income}🪙`;
+  banner(win?'VICTORY':res==='draw'?'DRAW':'DEFEAT',sub,win?'win':res==='draw'?'info':'lose',1500);
+  S.round++;addExp(2);
+  if(!S.locked)rollShop();
+  B=null;makeEnemy();
+  if(EVENT_ROUNDS.includes(S.round)){S.phase='event';render();setTimeout(showEvent,1300)}
+  else{S.phase='plan';render()}
+}
+function gameOver(win){
+  S.phase='over';clearSave();
+  const isNew=recordBest(win);render();
+  const o=document.createElement('div');o.className='overlay';
+  o.innerHTML=`<div class="box result"><h2 style="${win?'':'background:none;color:#ff8a9a;-webkit-text-fill-color:#ff8a9a'}">${win?'TRIUMPH':'GAME OVER'}</h2>
+  <div class="sub">${win?'全ラウンド制覇！あなたこそ真の富豪':S.hp>0?'最終ボスに敗れた…あと一歩で頂点だった':'資金も体力も尽きた…'}</div>
+  <div class="stats"><div><b>${S.round}</b>到達ラウンド</div><div><b>${Math.max(0,S.hp)}</b>残りHP</div><div><b>${S.gold}</b>所持コイン</div></div>
+  <div class="bestline">${isNew?'<b class="newbest">🎉 自己ベスト更新！</b><br>':''}自己ベスト：${bestText(BEST.best)}<br>
+    <small>プレイ ${BEST.plays}回・クリア ${BEST.clears}回</small></div>
+  <button id="again">もう一度</button></div>`;
+  document.body.appendChild(o);
+  $('again').onclick=()=>{o.remove();newGame()};
+}
+
+// ===== ヘルプ（? / H キー、または HUD のボタン） =====
+function helpHTML(){
+  const kb=(keys,txt)=>`<tr><td>${keys.map(k=>`<kbd>${k}</kbd>`).join(' ')}</td><td>${txt}</td></tr>`;
+  const strong=STRONG_ROUNDS.filter(r=>r!==MAX_ROUND).join('・');
+  return `<div class="box help" role="dialog" aria-label="遊び方">
+    <button class="close" data-close>✕ 閉じる</button>
+    <h2>HOW TO PLAY</h2><div class="sub" style="text-align:center">遊び方</div>
+    <div class="cols"><div>
+    <h3>目的</h3>
+    <p>ユニットを集めて全${MAX_ROUND}ラウンドを勝ち抜こう。戦闘に負けると、生き残った敵の数と強さに応じて HP が減り、0 になるとゲームオーバー。</p>
+    <h3>1ラウンドの流れ</h3>
+    <ul><li><b>準備</b>：ショップで買う・盤面に並べる・アイテムを付ける</li><li><b>BATTLE</b>：戦闘は自動で進む</li><li><b>収入</b>：結果に応じてコインが入り、次のラウンドへ</li></ul>
+    <h3>ユニット</h3>
+    <ul><li>同じユニットの <b>★1を3体で★2</b>、<b>★2を3体で★3</b> に自動合成</li>
+    <li>盤面に置ける数は<b>レベルと同じ</b>。経験値は毎ラウンド+2、4コインで+4</li>
+    <li>盤面の上の列が<b>前衛</b>。近接ユニットは敵の前衛を優先して狙う</li>
+    <li>ショップへドラッグすると売却（★1はコストと同額）</li></ul>
+    <h3>お金</h3>
+    <ul><li>毎ラウンド <b>基本5</b> ＋ <b>利子</b>（10コインごとに+1、上限${S.interestCap}）</li>
+    <li>3連勝・3連敗で+1、5回以上で+2。勝利でさらに+1</li>
+    <li>レベルが高いほど高コストのユニットがショップに並ぶ</li></ul>
+    </div><div>
+    <h3>シナジー（同じ特性の違うユニットを並べる）</h3>
+    <table>${Object.values(TRAITS).map(T=>`<tr><td>${T.icon} ${T.name}</td><td>${T.th.map((th,i)=>`<b>${th}体</b> ${T.desc[i]}`).join('<br>')}</td></tr>`).join('')}</table>
+    <h3>アイテム</h3>
+    <ul><li>主に戦闘の勝利で手に入る。1体に<b>3個まで</b>、ドラッグかクリックで装備</li>
+    <li>付けてから<b>${UNEQUIP_WAIT}ラウンド後</b>に外せる（アイコンをクリック）</li>
+    <li>持てるのは${INV_MAX}個まで。あふれた分は2コインに換金</li></ul>
+    <h3>イベントと強敵</h3>
+    <ul><li>R${EVENT_ROUNDS.join('・')} の前にイベント。3つの中から1つ選ぶ</li>
+    <li>R${strong} は<b>強敵</b>（勝つと+5コインとアイテム追加）、R${MAX_ROUND} は<b>最終ボス</b></li></ul>
+    </div></div>
+    <h3>操作</h3>
+    <div class="cols"><table>
+      ${kb(['クリック'],'ユニットを選ぶ → 移動先をクリック（ドラッグでも可）')}
+      ${kb(['1','〜','5'],'ショップの左から何番目を購入')}
+      ${kb(['D'],'ショップ更新（2コイン）')}${kb(['F'],'経験値を購入（4コイン）')}
+      ${kb(['E'],'選択中のユニットを売却')}${kb(['Space'],'戦闘開始')}
+    </table><table>
+      ${kb(['←','↑','↓','→'],'カーソル移動')}${kb(['Enter'],'カーソル位置を選ぶ・置く・装備する')}
+      ${kb(['I'],'アイテムを順に選ぶ')}${kb(['U'],'アイテムを外す')}
+      ${kb(['M'],'効果音のオン/オフ')}${kb(['Esc'],'選択の解除・このヘルプを閉じる')}${kb(['?'],'このヘルプ')}
+    </table></div>
+    ${BEST?`<p style="margin-top:14px;text-align:center;color:var(--dim)">自己ベスト：${bestText(BEST.best)}　／　プレイ ${BEST.plays}回・クリア ${BEST.clears}回</p>`:''}
+  </div>`;
+}
+function toggleHelp(){
+  const cur=$('help-overlay');if(cur){cur.remove();return}
+  const o=document.createElement('div');o.className='overlay';o.id='help-overlay';o.innerHTML=helpHTML();
+  o.onclick=e=>{if(e.target===o||e.target.closest('[data-close]'))toggleHelp()}; // 背景か閉じるボタンで閉じる
+  document.body.appendChild(o);hideTT();
+}
+
+// ===== 描画 =====
+function tip(t){const e=$('tip');e.textContent=t;e.classList.add('on');clearTimeout(tip.t);tip.t=setTimeout(()=>e.classList.remove('on'),3500)}
+function banner(title,sub,cls,ms){
+  const b=$('banner');b.querySelector('b').textContent=title;b.querySelector('span').textContent=sub||'';
+  b.className='';void b.offsetWidth;b.className='on '+cls;b.style.animationDuration=ms+'ms';
+  clearTimeout(banner.t);banner.t=setTimeout(()=>b.className='',ms);
+}
+function iconHTML(key){return IMG[key]?`<img src="img/${key}.png" alt="">`:UNITS[key].icon}
+function unitHTML(u,f){
+  const d=UNITS[u.key];
+  const own=!f&&S.phase==='plan'&&(S.board.includes(u)||S.bench.includes(u)); // 準備中の自軍だけアイコンから外せる
+  const its=u.items.map((k,j)=>{if(!own)return `<i>${ITEMS[k].icon}</i>`;const n=unequipWait(u,j);
+    return `<i class="${n?'lock':'rm'}" data-unequip="${j}" title="${ITEMS[k].name}：${n?`あと${n}ラウンドで外せる`:'クリックで外す'}">${ITEMS[k].icon}</i>`}).join('');
+  let s=`<div class="stars s${u.star}">${'★'.repeat(u.star)}</div><div class="its">${its}</div>
+    <div class="portrait">${iconHTML(u.key)}</div><div class="nm">${d.name}</div>`;
+  if(f)s+=`<div class="bars"><div class="bar"><i style="width:${100*f.hp/f.maxHp}%"></i><b style="width:${Math.min(100,100*f.shield/f.maxHp)}%"></b></div><div class="ebar"><i style="width:${100*f.energy/f.need}%"></i></div></div>`;
+  return s;
+}
+function cellHTML(u,cls,attrs,f){
+  return `<div class="cell ${u?`unit c${UNITS[u.key].cost} ${u.star===3?'st3':''} ${f?'fighting':''}`:'empty'} ${cls}" ${attrs}>${u?unitHTML(u,f):''}</div>`;
+}
+function renderTop(){
+  $('round').textContent=S.round;
+  $('best').textContent=BEST?`BEST ${BEST.best.cleared?'制覇':'R'+BEST.best.round}`:'';$('hp').textContent=Math.max(0,S.hp);$('hpbar').style.width=Math.max(0,S.hp)+'%';
+  $('gold').textContent=S.gold;$('nextint').textContent=`+${interest()} / 最大${S.interestCap}`;
+  if(lastGold!==null&&S.gold!==lastGold){
+    const d=document.createElement('div');d.className='delta '+(S.gold>lastGold?'up':'down');
+    d.textContent=(S.gold>lastGold?'+':'')+(S.gold-lastGold);$('goldpill').appendChild(d);setTimeout(()=>d.remove(),1100);
+  }
+  lastGold=S.gold;
+  // 戦闘中にコインが増減しても「買えない」表示を追従させる
+  // （購入直後は DOM がまだ古く、売り切れ枠を指していることがあるので飛ばす）
+  document.querySelectorAll('[data-shop]').forEach(c=>{const k=S.shop[+c.dataset.shop];if(k)c.classList.toggle('poor',S.gold<UNITS[k].cost)});
+  $('level').textContent=S.level;
+  $('exp').textContent=S.level>=MAX_LV?'MAX':`${S.exp} / ${EXP_NEED[S.level]}`;
+  $('expbar').style.width=S.level>=MAX_LV?'100%':(100*S.exp/EXP_NEED[S.level])+'%';
+  $('cap').textContent=`${onBoard()} / ${cap()}`;
+  const st=$('streak');st.className='streak '+(S.streak>=2?'win':S.streak<=-2?'lose':'');
+  st.textContent=S.streak>=2?`🔥 ${S.streak}連勝`:S.streak<=-2?`💧 ${-S.streak}連敗`:'';
+  $('pips').innerHTML=Array.from({length:MAX_ROUND},(_,i)=>{const r=i+1,c=['pip'];
+    if(r<S.round)c.push({win:'done',draw:'draw'}[S.results[r]]||'lost');if(r===S.round)c.push('cur');
+    if(EVENT_ROUNDS.includes(r))c.push('ev');if(STRONG_ROUNDS.includes(r))c.push(r===MAX_ROUND?'boss':'st');
+    return `<div class="${c.join(' ')}" title="R${r}${EVENT_ROUNDS.includes(r)?' イベント':''}${STRONG_ROUNDS.includes(r)?' 強敵':''}"></div>`}).join('');
+}
+function render(){
+  renderTop();
+  const bt=S.phase==='battle',strong=STRONG_ROUNDS.includes(S.round);
+  $('battleArea').classList.toggle('strong',strong);
+  $('enemyLabel').textContent=bt?`ROUND ${S.round} — 戦闘中`:`次の敵　ROUND ${S.round}`;
+  const et=$('etag');et.classList.toggle('on',strong);et.textContent=S.round===MAX_ROUND?'👑 最終ボス':'⚠ 強敵 — 勝利で+5🪙＆アイテム';
+  // 敵は後衛(4-7)を上、前衛(0-3)を下に表示
+  const eOrder=[4,5,6,7,0,1,2,3];
+  $('enemyBoard').innerHTML=eOrder.map(i=>cellHTML(S.enemy[i],'',`data-fid="e${i}"`,bt&&B.e[i])).join('');
+  const cc=(w,i)=>(isSel(w,i)?'sel ':'')+(isK(w,i)&&!bt?'kcur':'');
+  $('playerBoard').innerHTML=S.board.map((u,i)=>cellHTML(u,cc('board',i),`data-w="board" data-i="${i}" data-fid="p${i}"`,bt&&B.p[i])).join('');
+  $('bench').innerHTML=S.bench.slice(0,8).map((u,i)=>cellHTML(u,cc('bench',i),`data-w="bench" data-i="${i}"`)).join('');
+  $('inv').innerHTML=S.items.length?S.items.map((k,i)=>`<div class="item ${S.selItem===i?'sel':''}" data-item="${i}"><i>${ITEMS[k].icon}</i>${ITEMS[k].name}</div>`).join('')
+    :'<div class="empty-note">なし — 戦闘に勝つと手に入る</div>';
+  const own=owned();
+  $('shop').innerHTML=S.shop.map((k,i)=>{
+    if(!k)return `<div class="card sold"></div>`;const d=UNITS[k];
+    const n=own.filter(u=>u.key===k&&u.star===1).length;
+    return `<div class="card c${d.cost} ${S.gold<d.cost?'poor':''}" data-shop="${i}">
+      ${n>=2?'<div class="up">★UP</div>':n?`<div class="own">所持${n}</div>`:''}
+      <div class="portrait">${iconHTML(k)}</div><div class="cname">${d.name}</div>
+      <div class="ctr">${d.traits.map(t=>`<span>${TRAITS[t].icon}${TRAITS[t].name}</span>`).join('')}</div>
+      <div class="price"><span class="coin"></span>${d.cost}<span class="k">${i+1}</span></div></div>`}).join('');
+  // シナジー
+  const cnt=traitCounts(S.board,true);
+  $('syn').innerHTML=Object.keys(TRAITS).map(t=>({t,n:cnt[t]||0,l:traitLevel(t,cnt[t]||0)}))
+    .sort((a,b)=>b.l-a.l||b.n-a.n).map(({t,n,l})=>{
+    const T=TRAITS[t],max=T.th.length,tier=l?(l===max&&max>1?3:l===1?1:2):0;
+    return `<div class="syn ${tier?'tier'+tier:'off'}"><div class="hex">${T.icon}</div><div class="sinfo">
+      <div class="sname"><span>${T.name}${S.emblems[t]?` <span class="emb">紋章+${S.emblems[t]}</span>`:''}</span><b>${n}</b></div>
+      <div class="spips">${T.th.map(x=>`<span class="${n>=x?'on':''}">${x}</span>`).join('')}</div>
+      <div class="sdesc">${T.desc[Math.max(0,l-1)]}${l&&l<max?`<br>→ ${T.th[l]}体: ${T.desc[l]}`:''}</div></div></div>`}).join('');
+  // 状態
+  const b=[];
+  b.push(`<div class="kv"><span>攻撃ボーナス</span><b>+${Math.round(S.buffs.atk*100)}%</b></div>`);
+  b.push(`<div class="kv"><span>HPボーナス</span><b>+${Math.round(S.buffs.hp*100)}%</b></div>`);
+  b.push(`<div class="kv"><span>アイテム</span><b>${S.items.length} / ${INV_MAX}</b></div>`);
+  if(S.debt)b.push(`<div class="kv"><span>🦈 借金返済</span><b class="r">残り${S.debt}R（-${LOAN.pay}/R）</b></div>`);
+  $('buffs').innerHTML=b.join('');
+  const ip=incomeParts(true,S.streak>0?S.streak+1:1),sgn=v=>v>=0?'+'+v:v;
+  $('rules').innerHTML=[['基本',5],['利子（10🪙ごと）',ip.it],['連勝ボーナス',ip.sb],['豪商',ip.rb],['勝利ボーナス',ip.wb],['返済',-ip.pay]]
+    .map(([k,v])=>`<div class="kv"><span>${k}</span><b class="${v<0?'r':'g'}">${sgn(v)}</b></div>`).join('')
+    +`<div class="kv" style="border:none"><span>合計（勝利時）</span><b class="${ip.total<0?'r':'g'}" style="font-size:15px">${sgn(ip.total)}🪙</b></div>`;
+  const dis=S.phase!=='plan';
+  $('reroll').disabled=dis||S.gold<2;$('buyexp').disabled=dis||S.gold<4||S.level>=MAX_LV;
+  $('fight').disabled=dis;$('sell').disabled=dis||!S.sel;
+  $('lock').textContent=S.locked?'🔒 ロック中':'🔓 ロック';
+  $('fight').innerHTML=S.phase==='battle'?'FIGHTING…':'BATTLE<span class="k">Space</span>';
+  if(S.sel){const u=S[S.sel[0]][S.sel[1]];if(u){const d=UNITS[u.key];
+    $('sell').innerHTML=`💰 売却 <span class="coin"></span>${sellValue(u)}<span class="k">E</span>`;
+    tip(`${d.icon} ${d.name} ★${u.star} ｜ ${d.traits.map(t=>TRAITS[t].name).join('・')} ｜ ${d.range===1?'近接':'遠距離'} ｜ ${SKILL_TXT[d.skill]}`+
+      (u.items.length?` ｜ 装備: ${u.items.map(k=>ITEMS[k].name).join('、')}`:'')+' — 移動先をクリック')}}
+  else $('sell').innerHTML='💰 売却<span class="k">E</span>';
+  save();
+}
+const isSel=(w,i)=>S.sel&&S.sel[0]===w&&S.sel[1]===i;
+const cellOf=f=>document.querySelector(`[data-fid="${f.side}${f.slot}"]`);
+function updateBattle(actor){
+  document.querySelectorAll('.acting').forEach(e=>e.classList.remove('acting'));
+  for(const f of [...B.p,...B.e]){if(!f)continue;
+    const el=cellOf(f);if(!el)continue;
+    el.querySelector('.bar i').style.width=(100*f.hp/f.maxHp)+'%';
+    el.querySelector('.bar b').style.width=Math.min(100,100*f.shield/f.maxHp)+'%';
+    el.querySelector('.ebar i').style.width=(100*f.energy/f.need)+'%';
+    el.classList.toggle('dead',!f.alive);if(f===actor)el.classList.add('acting');}
+}
+function float(f,text,color,big){
+  const el=cellOf(f);if(!el)return;
+  const s=document.createElement('div');s.className='float'+(big?' big':'');s.textContent=text;s.style.color=color;
+  s.style.left=(10+Math.random()*40)+'%';el.appendChild(s);setTimeout(()=>s.remove(),900);
+}
+function shake(f){const el=cellOf(f);if(!el)return;el.classList.remove('hurt');void el.offsetWidth;el.classList.add('hurt')}
+function line(a,b,skill,color){ // 攻撃者→対象の光線
+  const ea=cellOf(a),eb=cellOf(b);if(!ea||!eb)return;
+  const ra=ea.getBoundingClientRect(),rb=eb.getBoundingClientRect();
+  const col=color||(skill?'#ffd27a':a.side==='p'?'#62b6ff':'#ff5d73');
+  const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+  l.setAttribute('x1',ra.left+ra.width/2);l.setAttribute('y1',ra.top+ra.height/2);
+  l.setAttribute('x2',rb.left+rb.width/2);l.setAttribute('y2',rb.top+rb.height/2);
+  l.setAttribute('stroke',col);l.setAttribute('stroke-width',skill?5:2.5);l.setAttribute('stroke-linecap','round');
+  const g=document.createElementNS('http://www.w3.org/2000/svg','g'),glow=l.cloneNode();
+  glow.setAttribute('stroke-width',skill?14:8);glow.setAttribute('stroke-opacity',.25);g.append(glow,l);
+  g.style.opacity=.95;g.style.transition='opacity .4s';
+  $('fx').appendChild(g);requestAnimationFrame(()=>requestAnimationFrame(()=>g.style.opacity=0));
+  setTimeout(()=>g.remove(),450);
+}
+
+// ===== ツールチップ =====
+function ttUnit(key,star,items,f,foot,u){ // u を渡すと装備アイテムの取り外し状況も出す
+  const d=UNITS[key],m=STAR_MULT[star],cnt=traitCounts(S.board,true);
+  const hp=f?`${Math.round(f.hp)}<small style="display:inline"> / ${Math.round(f.maxHp)}</small>`:Math.round(d.hp*m);
+  return `<div class="tth c${d.cost}"><span class="tti">${iconHTML(key)}</span><div><b>${d.name}</b>
+      <div class="ttsub"><span class="stars s${star}">${'★'.repeat(star)}</span>　コスト${d.cost}・${d.range===1?'近接':'遠距離'}</div></div></div>
+    <div class="ttstats"><div><small>HP</small><b>${hp}</b></div><div><small>攻撃</small><b>${Math.round(f?f.atk:d.atk*m)}</b></div><div><small>速度</small><b>${Math.round(f?f.spd:d.spd)}</b></div></div>
+    <div class="tttr">${d.traits.map(t=>`<span class="${traitLevel(t,cnt[t]||0)?'on':''}">${TRAITS[t].icon} ${TRAITS[t].name}</span>`).join('')}</div>
+    <div class="ttsk"><b>スキル</b>（${f?f.need:3}回行動ごと）<br>${SKILL_TXT[d.skill]}</div>
+    ${items.length?`<div class="ttit">${items.map((k,j)=>{const n=u?unequipWait(u,j):null;
+      return `<div>${ITEMS[k].icon} <b>${ITEMS[k].name}</b>　${ITEMS[k].desc}${n==null?'':n?`<small>（あと${n}Rで外せる）</small>`:'<small style="color:var(--gold)">（外せる）</small>'}</div>`}).join('')}</div>`:''}
+    ${foot?`<div class="ttfoot">${foot}</div>`:''}`;
+}
+function ttFor(el){
+  const bt=S.phase==='battle';
+  const sh=el.closest('[data-shop]');
+  if(sh){const k=S.shop[+sh.dataset.shop];if(!k)return null;const d=UNITS[k];
+    return ttUnit(k,1,[],null,`★2: HP ${Math.round(d.hp*STAR_MULT[2])}・攻撃 ${Math.round(d.atk*STAR_MULT[2])}　／　クリックで <b>${d.cost}🪙</b> で購入`)}
+  const it=el.closest('[data-item]');
+  if(it){const k=ITEMS[S.items[+it.dataset.item]];
+    return `<div class="tth"><span class="tti" style="--cc:var(--line2)">${k.icon}</span><div><b>${k.name}</b><div class="ttsub">アイテム</div></div></div>
+      <div class="ttsk" style="margin-top:8px">${k.desc}</div><div class="ttfoot">キャラにドラッグして装備（1体3個まで）</div>`}
+  const c=el.closest('[data-fid],[data-w]');if(!c)return null;
+  const fid=c.dataset.fid,side=fid?fid[0]:'p',i=fid?+fid.slice(1):+c.dataset.i;
+  const u=c.dataset.w?S[c.dataset.w][i]:S.enemy[i];if(!u)return null;
+  const f=bt&&fid?B[side][i]:null;
+  const foot=side==='e'?'敵ユニット':bt?'':`売却 <b>+${sellValue(u)}🪙</b>　／　ドラッグで移動・ショップへドラッグで売却`+
+    (u.items.length?`<br>アイテムは装備の${UNEQUIP_WAIT}ラウンド後から、アイコンのクリック（U キー）で外せる`:'');
+  return ttUnit(u.key,u.star,u.items,f,foot,side==='e'||bt?null:u);
+}
+let ttEl=null;
+function hideTT(){$('tt').classList.remove('on');ttEl=null}
+document.addEventListener('mousemove',e=>{
+  if(D&&D.ghost)return;
+  const tt=$('tt'),target=e.target.closest?.('[data-shop],[data-item],[data-fid],[data-w]');
+  if(!target){if(ttEl)hideTT();return}
+  if(target!==ttEl||S.phase==='battle'){const h=ttFor(target);if(!h){hideTT();return}tt.innerHTML=h;tt.classList.add('on');ttEl=target}
+  const w=tt.offsetWidth,h=tt.offsetHeight;
+  let x=e.clientX+18,y=e.clientY+18;
+  if(x+w>innerWidth-8)x=e.clientX-w-18;
+  if(y+h>innerHeight-8)y=e.clientY-h-18; // 下に入らなければカーソルの上に出す
+  tt.style.left=x+'px';tt.style.top=Math.max(8,y)+'px';
+});
+document.addEventListener('mouseleave',hideTT);
+
+// ===== ドラッグ＆ドロップ =====
+let D=null,suppressClick=false;
+document.addEventListener('pointerdown',e=>{
+  if(e.button!==0||S.phase!=='plan')return;
+  const c=e.target.closest('[data-w]'),it=e.target.closest('[data-item]');
+  if(D)endDrag(null); // 取り残されたドラッグがあれば片付ける
+  if(c&&S[c.dataset.w][+c.dataset.i])D={kind:'unit',w:c.dataset.w,i:+c.dataset.i,el:c,x:e.clientX,y:e.clientY};
+  else if(it)D={kind:'item',i:+it.dataset.item,el:it,x:e.clientX,y:e.clientY};
+  if(D)e.preventDefault(); // ブラウザ標準のドラッグ・文字選択を止める
+});
+document.addEventListener('pointermove',e=>{
+  if(!D)return;
+  if(!D.ghost){
+    if(Math.hypot(e.clientX-D.x,e.clientY-D.y)<6)return;
+    const r=D.el.getBoundingClientRect(),g=D.el.cloneNode(true);
+    g.classList.remove('sel');g.classList.add('drag-ghost');g.style.width=r.width+'px';g.style.height=r.height+'px';
+    document.body.appendChild(g);D.ghost=g;D.el.classList.add('dragsrc');document.body.classList.add('dragging');hideTT();
+    if(D.kind==='unit'){const u=S[D.w][D.i];document.querySelector('.shopwrap').dataset.sell=`ここで売却  +${sellValue(u)}🪙`}
+  }
+  D.ghost.style.left=e.clientX+'px';D.ghost.style.top=e.clientY+'px';
+  document.querySelectorAll('.drop').forEach(x=>x.classList.remove('drop'));
+  const t=dropTarget(e);if(t)t.classList.add('drop');
+});
+function dropTarget(e){
+  const el=document.elementFromPoint(e.clientX,e.clientY);if(!el)return null;
+  const c=el.closest('[data-w]');
+  if(c&&(D.kind==='unit'||S[c.dataset.w][+c.dataset.i]))return c;
+  if(D.kind==='unit')return el.closest('.shopwrap');
+  return null;
+}
+document.addEventListener('pointerup',e=>endDrag(e));
+document.addEventListener('pointercancel',()=>endDrag(null));
+window.addEventListener('blur',()=>endDrag(null));
+function endDrag(e){ // e が null ならドロップせずに取り消し
+  if(!D)return;
+  const d=D;
+  if(!d.ghost){D=null;return} // 動かしていなければ通常のクリック扱い
+  suppressClick=true;setTimeout(()=>suppressClick=false,0);
+  const t=e?dropTarget(e):null;D=null;
+  d.ghost.remove();d.el.classList.remove('dragsrc');document.body.classList.remove('dragging');
+  delete document.querySelector('.shopwrap').dataset.sell;
+  document.querySelectorAll('.drop').forEach(x=>x.classList.remove('drop'));
+  if(!t){render();return}
+  if(t.classList.contains('shopwrap'))return sellAt(d.w,d.i);
+  if(d.kind==='unit')moveUnit(d.w,d.i,t.dataset.w,+t.dataset.i);
+  else equip(d.i,t.dataset.w,+t.dataset.i);
+}
+
+// ===== 入力 =====
+document.addEventListener('click',e=>{
+  if(suppressClick)return;
+  const sh=e.target.closest('[data-shop]');if(sh)return buy(+sh.dataset.shop);
+  const it=e.target.closest('[data-item]');if(it)return clickItem(+it.dataset.item);
+  const c=e.target.closest('[data-w]');
+  // 何も選んでいない時に装備アイコンを押したら取り外し（選択中は通常どおり移動・装備を優先）
+  const ue=e.target.closest('[data-unequip]');
+  if(c&&ue&&!S.sel&&S.selItem===null)return unequip(c.dataset.w,+c.dataset.i,+ue.dataset.unequip);
+  if(c)return clickSlot(c.dataset.w,+c.dataset.i);
+});
+$('reroll').onclick=()=>{if(S.phase==='plan'&&S.gold>=2){S.gold-=2;rollShop();sfx('reroll');render()}};
+$('buyexp').onclick=()=>{if(S.phase==='plan'&&S.gold>=4&&S.level<MAX_LV){S.gold-=4;addExp(4);sfx('skill');render()}};
+$('mute').onclick=toggleMute;
+$('helpbtn').onclick=toggleHelp;
+// 進行中のタイマーをまとめて捨てるため、セーブを消してページごと読み直す
+$('restart').onclick=()=>{if(confirm('今のゲームを破棄して最初からやり直しますか？')){clearSave();location.reload()}};
+$('lock').onclick=()=>{S.locked=!S.locked;render()};
+$('sell').onclick=sellSel;
+$('fight').onclick=startBattle;
+$('speed').onclick=()=>{S.speed=S.speed===1?2:S.speed===2?4:1;$('speed').textContent='⏩ 速度 x'+S.speed;
+  if(timer){clearInterval(timer);timer=setInterval(step,380/S.speed)}};
+// ===== キーボード操作（矢印でカーソル、Enter で選択・配置、1〜5 で購入、I でアイテム選択） =====
+const K={on:false,w:'board',i:0};
+const isK=(w,i)=>K.on&&K.w===w&&K.i===i;
+function moveCursor(key){
+  if(!K.on){K.on=true;render();return} // 最初の矢印はカーソルを出すだけ
+  let {w,i}=K;
+  if(w==='board'){ // 盤面は 2行×4列（上段0-3が前衛）
+    const r=i>>2,c=i&3;
+    if(key==='arrowleft')i=r*4+Math.max(0,c-1);
+    if(key==='arrowright')i=r*4+Math.min(3,c+1);
+    if(key==='arrowup'&&r===1)i=c;
+    if(key==='arrowdown'){if(r===0)i=4+c;else{w='bench';i=c*2}}
+  }else{ // ベンチは 1行×8列
+    if(key==='arrowleft')i=Math.max(0,i-1);
+    if(key==='arrowright')i=Math.min(7,i+1);
+    if(key==='arrowup'){w='board';i=4+(i>>1)}
+  }
+  K.w=w;K.i=i;render();
+}
+function cycleItem(){ // アイテムを順に選び、最後の次は選択解除
+  if(S.phase!=='plan'||!S.items.length)return;
+  const n=S.selItem===null?0:S.selItem+1;
+  if(n>=S.items.length){S.selItem=null;render()}else{S.selItem=null;clickItem(n)}
+}
+// マウスを使ったらカーソルを隠す（ここで render するとクリック先の要素が作り直されてしまうのでクラスだけ外す）
+document.addEventListener('pointerdown',()=>{if(K.on){K.on=false;document.querySelectorAll('.kcur').forEach(x=>x.classList.remove('kcur'))}});
+document.addEventListener('keydown',e=>{const k=e.key.toLowerCase();
+  if(e.ctrlKey||e.metaKey||e.altKey)return; // Ctrl+F（検索）や Ctrl+1（タブ切替）などブラウザの操作で誤爆しない
+  if(k==='?'||k==='h'){if(!e.repeat)toggleHelp();return}
+  if($('help-overlay')){if(k==='escape')toggleHelp();return} // ヘルプ表示中は他のキーを受け付けない
+  if(k.startsWith('arrow')){if(S.phase==='plan'){e.preventDefault();moveCursor(k)}return} // 矢印は押しっぱなしで連続移動できる
+  if(e.repeat)return;
+  if(k==='d')$('reroll').click();if(k==='f')$('buyexp').click();if(k==='e')sellSel();if(k==='m')toggleMute();if(k==='i')cycleItem();
+  if(k==='u'&&S.phase==='plan'){const p=K.on?[K.w,K.i]:S.sel;if(p)unequipLast(...p)} // カーソル（なければ選択中）のユニットから外す
+  if(k>='1'&&k<='5')buy(+k-1);
+  if(k==='enter'&&K.on){e.preventDefault();clickSlot(K.w,K.i)}
+  if(k===' '){e.preventDefault();document.activeElement?.blur?.();startBattle()} // フォーカス中のボタンが押されないよう外す
+  if(k==='escape'&&S.phase==='plan'){S.sel=null;S.selItem=null;K.on=false;render()}}); // 戦闘中は描き直さない
+$('mute').textContent=muted?'🔇':'🔊';
+if(!loadGame())newGame();
+// 初めて遊ぶ人にはヘルプを1回だけ自動で出す
+try{if(!localStorage.getItem('coinwars-helpseen')){localStorage.setItem('coinwars-helpseen','1');toggleHelp()}}catch{}
+</script>
+</body>
+</html>

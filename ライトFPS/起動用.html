@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CYBER ARENA // 3D FPS Survival</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <!-- Damage / Heal Screen Vignette -->
+  <div id="damage-overlay"></div>
+  <div id="heal-overlay"></div>
+  <div id="speed-lines"></div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <!-- Top Info Bar -->
+    <div id="top-bar">
+      <div class="stat-box wave-box">
+        <span class="label">WAVE</span>
+        <span id="wave-num" class="value">1</span>
+      </div>
+      <div class="stat-box enemies-box">
+        <span class="label">HOSTILES</span>
+        <span id="enemies-left" class="value">0</span>
+      </div>
+      <div class="stat-box score-box">
+        <span class="label">SCORE</span>
+        <span id="score-val" class="value">0</span>
+      </div>
+      <div class="stat-box credits-box">
+        <span class="label">CREDITS</span>
+        <span id="credits-val" class="value">¥0</span>
+      </div>
+      <div class="stat-box combo-box" id="combo-box">
+        <span class="label">COMBO</span>
+        <span id="combo-val" class="value">x1.0</span>
+        <div id="combo-bar-bg"><div id="combo-bar"></div></div>
+      </div>
+      <div class="stat-box hiscore-box">
+        <span class="label">BEST SCORE</span>
+        <span id="best-score-val" class="value">0</span>
+      </div>
+    </div>
+
+    <!-- Boss Health Bar (Top Center) -->
+    <div id="boss-bar-container" class="hidden">
+      <div class="boss-title" id="boss-name">⚠️ OMEGA TITAN // BOSS</div>
+      <div class="boss-hp-bg">
+        <div id="boss-hp-fill"></div>
+      </div>
+    </div>
+
+    <!-- Minimap Radar (Top Right) -->
+    <div id="radar-container">
+      <canvas id="minimap" width="160" height="160"></canvas>
+      <div class="radar-label">RADAR // N</div>
+    </div>
+
+    <!-- Center Crosshair & Hitmarker -->
+    <div id="crosshair-wrapper">
+      <div id="scope-overlay" class="hidden">
+        <div class="scope-line-h"></div>
+        <div class="scope-line-v"></div>
+        <div class="scope-circle"></div>
+      </div>
+      <div id="crosshair">
+        <div class="ch-line ch-top"></div>
+        <div class="ch-line ch-bottom"></div>
+        <div class="ch-line ch-left"></div>
+        <div class="ch-line ch-right"></div>
+        <div class="ch-dot"></div>
+      </div>
+      <div id="hitmarker" class="hidden">
+        <div class="hm-line hm-1"></div>
+        <div class="hm-line hm-2"></div>
+        <div class="hm-line hm-3"></div>
+        <div class="hm-line hm-4"></div>
+      </div>
+    </div>
+
+    <!-- Floating Damage Numbers Container -->
+    <div id="damage-numbers"></div>
+
+    <!-- Center Announcements (Wave Clear, Shop Hint, Reloading) -->
+    <div id="announcement"></div>
+    <div id="shop-prompt" class="hidden">
+      <div class="prompt-inner">
+        <span class="key-badge">B</span> ショップを開く（アップグレード＆補給） / <span class="key-badge">N</span> 次のウェーブを即時開始
+        <div id="intermission-timer">NEXT WAVE IN: 15.0s</div>
+      </div>
+    </div>
+
+    <!-- Kill Feed -->
+    <div id="kill-feed"></div>
+
+    <!-- Bottom Left: Health, Shield, Stamina, Movement State -->
+    <div id="bottom-left">
+      <div id="move-state">WALKING</div>
+      <span id="revive-tag" class="status-tag hidden">💠 REVIVE x1</span>
+      <span id="contract-tag" class="status-tag contract hidden">⚠️ CONTRACT ACTIVE</span>
+      <div class="bar-group">
+        <div class="bar-header">
+          <span>HP</span>
+          <span id="hp-text">100 / 100</span>
+        </div>
+        <div class="bar-bg">
+          <div id="hp-bar" class="bar-fill hp-fill"></div>
+        </div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-header">
+          <span>STAMINA (DASH / SLIDE)</span>
+          <span id="stamina-text">100%</span>
+        </div>
+        <div class="bar-bg small-bar">
+          <div id="stamina-bar" class="bar-fill stamina-fill"></div>
+        </div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-header">
+          <span>PLASMA GRENADE [G / Q]</span>
+          <span id="grenade-text">READY</span>
+        </div>
+        <div class="bar-bg small-bar">
+          <div id="grenade-bar" class="bar-fill grenade-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Right: Weapon & Ammo -->
+    <div id="bottom-right">
+      <div id="weapon-slots">
+        <div class="w-slot active" data-slot="0"><span class="slot-key">1</span> ASSAULT RIFLE</div>
+        <div class="w-slot" data-slot="1"><span class="slot-key">2</span> SHOTGUN</div>
+        <div class="w-slot" data-slot="2"><span class="slot-key">3</span> SNIPER RIFLE</div>
+        <div class="w-slot" data-slot="3"><span class="slot-key">4</span> PLASMA LAUNCHER</div>
+      </div>
+      <div id="ammo-panel">
+        <div id="weapon-name">PULSE AR-55</div>
+        <div id="ammo-display">
+          <span id="ammo-current">30</span>
+          <span class="ammo-sep">/</span>
+          <span id="ammo-max">30</span>
+        </div>
+        <div id="reload-bar-wrap" class="hidden">
+          <div id="reload-bar"></div>
+          <span class="reload-label">RELOADING...</span>
+        </div>
+      </div>
+      <div class="controls-hint">
+        <span>[WASD] 移動</span>
+        <span>[Shift] ダッシュ</span>
+        <span>[C] スライディング</span>
+        <span>[Space] ジャンプ</span>
+        <span>[G / Q] グレネード</span>
+        <span>[R] リロード</span>
+        <span>[右クリック] ADS</span>
+        <span>[B] ショップ</span>
+        <span>[M] BGM切替</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Start / Pause Menu Overlay -->
+  <div id="menu-overlay" class="overlay">
+    <div class="menu-card">
+      <div class="cyber-badge">TACTICAL ARENA FPS</div>
+      <h1 class="game-title">CYBER <span>ARENA</span></h1>
+      <p class="subtitle">ウェーブ制3Dアリーナサバイバルシューター</p>
+
+      <div class="features-grid">
+        <div class="feature-item">
+          <div class="f-title">🔫 4種の武器＆グレネード</div>
+          <div class="f-desc">[1] AR / [2] ショットガン / [3] スナイパー / [4] プラズマランチャー。さらに [G / Q] で範囲爆発グレネード投擲！</div>
+        </div>
+        <div class="feature-item">
+          <div class="f-title">⚡ 爽快パルクールアクション</div>
+          <div class="f-desc">[Shift] ダッシュ中に [C] で高速スライディング！ジャンプパッドを使った立体機動も可能！</div>
+        </div>
+        <div class="feature-item">
+          <div class="f-title">🎯 コンボ＆ボス戦＆強化</div>
+          <div class="f-desc">連続撃破でスコア＆報酬倍率UP！5ウェーブ毎に巨大ボスが出現。[B] ショップで武器・機体を自在に強化</div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <label for="sens-slider">マウス感度: <span id="sens-val">1.0</span></label>
+        <input type="range" id="sens-slider" min="0.2" max="2.5" step="0.1" value="1.0">
+        <label for="bgm-slider" style="margin-left: 16px;">BGM音量: <span id="bgm-val">70%</span></label>
+        <input type="range" id="bgm-slider" min="0" max="100" step="5" value="70">
+      </div>
+
+      <div class="records-panel">
+        <div class="records-title">🏆 HIGH SCORES</div>
+        <ol id="menu-records" class="records-list"></ol>
+      </div>
+
+      <div class="menu-buttons">
+        <button id="start-btn" class="cyber-btn">MISSION START (クリックで出撃)</button>
+        <button id="quit-btn" class="cyber-btn secondary-btn hidden">タイトルに戻る</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upgrade Shop Modal -->
+  <div id="shop-overlay" class="overlay hidden">
+    <div class="shop-card">
+      <div class="shop-header">
+        <div>
+          <h2>ARMORY & CYBERWARE SHOP</h2>
+          <p>クレジットを消費して武器やステータスを強化します</p>
+        </div>
+        <div class="shop-credits-box">
+          <span>所持 CREDITS:</span>
+          <strong id="shop-credits">¥0</strong>
+        </div>
+      </div>
+
+      <div id="shop-items" class="shop-grid">
+        <!-- Dynamically populated by game.js -->
+      </div>
+
+      <div class="shop-footer">
+        <button id="resume-from-shop-btn" class="cyber-btn">戦闘に戻る [B / ESC]</button>
+        <button id="next-wave-shop-btn" class="cyber-btn secondary-btn">次のウェーブをすぐ開始 [N]</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over Overlay -->
+  <div id="gameover-overlay" class="overlay hidden">
+    <div class="menu-card gameover-card">
+      <div class="cyber-badge danger">MISSION FAILED</div>
+      <h1 class="game-title danger-text">YOU <span>DIED</span></h1>
+      <div class="final-stats">
+        <div class="f-stat"><span>到達 WAVE</span><strong id="final-wave">1</strong></div>
+        <div class="f-stat"><span>最終 SCORE</span><strong id="final-score">0</strong></div>
+        <div class="f-stat"><span>撃破数 (KILLS)</span><strong id="final-kills">0</strong></div>
+        <div class="f-stat"><span>ヘッドショット率</span><strong id="final-hs">0%</strong></div>
+      </div>
+      <div id="gameover-record-badge" class="record-badge"></div>
+      <div class="records-panel">
+        <div class="records-title">🏆 HIGH SCORES</div>
+        <ol id="gameover-records" class="records-list"></ol>
+      </div>
+      <button id="restart-btn" class="cyber-btn">RETRY MISSION</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

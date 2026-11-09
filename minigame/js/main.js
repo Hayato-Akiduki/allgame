@@ -1,0 +1,3 @@
+
+loadSave();
+renderHome();

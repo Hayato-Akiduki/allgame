@@ -1,0 +1,8 @@
+# OS・エディタが作るファイル
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+
+# Claude Code の個人設定
+.claude/settings.local.json

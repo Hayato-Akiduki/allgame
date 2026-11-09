@@ -1,0 +1,1090 @@
+<title>社長の帳簿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: 帳簿（会計帳簿）見立て。左に経営会議の操作、右に損益計算書と社内報。下に「月を締める」帯。 */
+:root {
+  --paper: #eef2ec;
+  --sheet: #fbfcf8;
+  --ink: #1d2a3a;
+  --muted: #5b6a70;
+  --rule: #bccdd8;
+  --rule-red: #d9978c;
+  --seal: #c3361f;
+  --good: #2c7a4b;
+  --warn: #a8670a;
+  --chip: #e2e9e4;
+  --f-display: "Shippori Mincho B1", "Yu Mincho", "Hiragino Mincho ProN", serif;
+  --f-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, "Consolas", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #10181d; --sheet: #172128; --ink: #e5eae3; --muted: #93a2a7;
+    --rule: #2e4250; --rule-red: #7d4037; --seal: #e65a3d; --good: #5cbf86; --warn: #e2a443; --chip: #22303a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #10181d; --sheet: #172128; --ink: #e5eae3; --muted: #93a2a7;
+  --rule: #2e4250; --rule-red: #7d4037; --seal: #e65a3d; --good: #5cbf86; --warn: #e2a443; --chip: #22303a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--f-body); font-size: 15px; line-height: 1.6;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 0; display: grid; gap: 18px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.3; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--seal); outline-offset: 2px; }
+.num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.label { font-size: 12px; letter-spacing: .08em; color: var(--muted); }
+
+/* header */
+.head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; border-bottom: 3px double var(--rule-red); padding-bottom: 14px; }
+.head .who { display: grid; gap: 2px; min-width: 0; }
+#company-name {
+  font-family: var(--f-display); font-weight: 800; font-size: clamp(24px, 4vw, 34px);
+  border: 0; background: transparent; color: var(--ink); padding: 0; width: 100%; max-width: 22ch;
+  border-bottom: 1px dashed transparent;
+}
+#company-name:hover { border-bottom-color: var(--rule); }
+.period { font-family: var(--f-display); font-size: 20px; font-weight: 600; }
+.goal { display: grid; gap: 6px; min-width: min(320px, 100%); flex: 1 1 280px; max-width: 420px; }
+.goal .bar { height: 8px; background: var(--chip); border-radius: 4px; overflow: hidden; }
+.goal .fill { height: 100%; background: var(--seal); width: 0; transition: width .5s ease; }
+.goal .row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+
+/* kpis */
+.kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); background: var(--sheet); border: 1px solid var(--rule); }
+.kpi { padding: 10px 14px; display: grid; gap: 2px; border-right: 1px solid var(--rule); min-width: 0; }
+.kpi:last-child { border-right: 0; }
+.kpi .v { font-family: var(--f-num); font-size: 19px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi .sub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi .sub.neg { color: var(--seal); }
+.kpi .sub.pos { color: var(--good); }
+.kpi .meter { height: 4px; background: var(--chip); border-radius: 2px; overflow: hidden; }
+.kpi .meter i { display: block; height: 100%; background: var(--ink); opacity: .7; }
+.neg { color: var(--seal); }
+.pos { color: var(--good); }
+@media (max-width: 820px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .kpi:nth-child(3) { border-right: 0; } .kpi:nth-child(-n+3) { border-bottom: 1px solid var(--rule); } }
+
+/* columns */
+.cols { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 880px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--sheet); border: 1px solid var(--rule); padding: 16px 18px; display: grid; gap: 14px; min-width: 0; }
+.panel > h2 { font-size: 19px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.panel > h2 small { font-family: var(--f-body); font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: .06em; }
+.stack { display: grid; gap: 16px; min-width: 0; }
+.section { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.section:first-of-type { border-top: 0; padding-top: 0; }
+.section h3 { font-size: 15px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.section h3 span { font-family: var(--f-num); font-size: 15px; font-weight: 500; }
+.hint { font-size: 13px; color: var(--muted); }
+
+input[type="range"] { width: 100%; accent-color: var(--seal); }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--rule); }
+.seg button { background: transparent; border: 0; border-right: 1px solid var(--rule); padding: 7px 4px; font-size: 13px; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--sheet); }
+
+.staff { display: grid; gap: 0; }
+.staff .r { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--rule); }
+.staff .r:last-child { border-bottom: 0; }
+.staff .name { display: grid; min-width: 0; }
+.staff .name b { font-weight: 700; }
+.staff .name small { color: var(--muted); font-size: 12px; }
+.staff .name .pend { color: var(--seal); font-weight: 700; }
+.stepper { display: flex; align-items: center; border: 1px solid var(--rule); }
+.stepper button { width: 34px; height: 32px; background: transparent; border: 0; font-size: 18px; line-height: 1; }
+.stepper button:disabled { opacity: .3; cursor: not-allowed; }
+.stepper output { min-width: 34px; text-align: center; font-family: var(--f-num); border-inline: 1px solid var(--rule); line-height: 32px; }
+.wage { font-family: var(--f-num); font-size: 13px; color: var(--muted); min-width: 64px; text-align: right; }
+
+.buy { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.buy .now { min-width: 0; }
+.btn { border: 1px solid var(--ink); background: transparent; padding: 6px 12px; font-size: 13px; white-space: nowrap; }
+.btn:hover:not(:disabled) { background: var(--ink); color: var(--sheet); }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* forecast */
+.forecast { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border: 1px solid var(--rule); }
+.forecast div { padding: 8px 10px; border-right: 1px solid var(--rule); display: grid; min-width: 0; }
+.forecast div:last-child { border-right: 0; }
+.forecast .v { font-family: var(--f-num); font-size: 16px; }
+.chip { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--chip); }
+.chip.warn { color: var(--warn); }
+.chip.bad { color: var(--seal); }
+.chip.ok { color: var(--good); }
+
+/* ledger */
+.ledger { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ledger td { padding: 6px 2px; border-bottom: 1px solid var(--rule); }
+.ledger td:last-child { text-align: right; font-family: var(--f-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ledger tr.sub td { color: var(--muted); padding-left: 1em; }
+.ledger tr.total td { border-top: 3px double var(--rule-red); border-bottom: 0; font-weight: 700; padding-top: 8px; }
+.ledger tr.total td:first-child { font-family: var(--f-display); }
+.pl-tabs { display: inline-flex; border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; font-family: var(--f-body); font-weight: 400; font-size: 12px; vertical-align: middle; }
+.pl-tab { background: transparent; border: 0; padding: 2px 8px; color: var(--muted); cursor: pointer; line-height: 1.4; }
+.pl-tab:not(:last-child) { border-right: 1px solid var(--rule); }
+.pl-tab.active { background: var(--ink); color: var(--sheet); font-weight: 700; }
+.chart-box { position: relative; }
+canvas { width: 100%; height: 150px; display: block; }
+
+.log { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow-y: auto; display: grid; }
+.log li { padding: 6px 0; border-bottom: 1px dashed var(--rule); font-size: 13px; display: grid; grid-template-columns: 6.5em 1fr; gap: 8px; }
+.log li time { color: var(--muted); font-family: var(--f-num); font-size: 12px; padding-top: 1px; }
+.log li.alert span { color: var(--seal); }
+
+/* close bar */
+.close-bar {
+  position: sticky; bottom: 0; z-index: 5; background: var(--paper);
+  border-top: 1px solid var(--rule);
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  margin-top: 4px;
+}
+.close-bar .in { max-width: 1180px; margin: 0 auto; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.close-bar .sum { font-size: 14px; min-width: 0; }
+.close-btn {
+  background: var(--seal); color: #fff; border: 0; padding: 12px 26px; font-family: var(--f-display); font-weight: 800; font-size: 17px; letter-spacing: .1em;
+}
+.close-btn:hover { filter: brightness(1.08); }
+.close-btn:disabled { opacity: .4; cursor: not-allowed; }
+.foot { display: flex; justify-content: flex-end; gap: 8px; padding-bottom: 8px; }
+.link-btn { background: none; border: 0; color: var(--muted); font-size: 13px; text-decoration: underline; padding: 4px; }
+
+/* modal */
+.overlay { position: fixed; inset: 0; background: rgb(10 16 20 / .55); display: grid; place-items: center; padding: 16px; z-index: 20; }
+/* display: grid が hidden 属性を打ち消さないように */
+[hidden], .overlay[hidden] { display: none !important; }
+.card {
+  background: var(--sheet); border: 1px solid var(--rule); width: min(460px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; padding: 24px 22px 20px;
+  display: grid; gap: 14px; position: relative; box-shadow: 0 18px 50px rgb(0 0 0 / .25);
+}
+.card h3 { font-size: 22px; padding-right: 80px; }
+.card p { margin: 0; }
+.card .btn-row { justify-content: flex-end; }
+.card .btn { padding: 9px 14px; font-size: 14px; }
+.card .btn.primary { background: var(--ink); color: var(--sheet); }
+.hanko {
+  position: absolute; top: 16px; right: 16px; width: 70px; height: 70px; border: 3px solid var(--seal); border-radius: 50%;
+  color: var(--seal); display: grid; place-items: center; font-family: var(--f-display); font-weight: 800; font-size: 19px;
+  writing-mode: vertical-rl; letter-spacing: .05em; transform: rotate(-12deg); animation: stamp .35s cubic-bezier(.3,1.6,.6,1) both;
+}
+@keyframes stamp { from { transform: rotate(-12deg) scale(1.8); opacity: 0; } to { transform: rotate(-12deg) scale(1); opacity: .92; } }
+.result { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 14px; }
+.result dd { margin: 0; text-align: right; font-family: var(--f-num); }
+.rank { font-family: var(--f-display); font-size: 54px; font-weight: 800; color: var(--seal); line-height: 1; }
+.ind-chip { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+.ind-chip b { color: var(--ink); font-weight: 700; }
+
+/* setup */
+.card.setup { width: min(760px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; gap: 18px; }
+.card.setup h3 { padding-right: 0; font-size: 26px; }
+.field { display: grid; gap: 6px; }
+.field input {
+  font-family: var(--f-display); font-weight: 800; font-size: 22px; padding: 8px 10px;
+  border: 1px solid var(--rule); background: var(--paper); color: var(--ink); width: 100%;
+}
+.inds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 560px) { .inds { grid-template-columns: minmax(0, 1fr); } }
+.ind {
+  text-align: left; background: var(--paper); border: 1px solid var(--rule); padding: 12px 14px;
+  display: grid; gap: 4px; align-content: start; min-width: 0;
+}
+.ind:hover { border-color: var(--ink); }
+.ind[aria-pressed="true"] { border-color: var(--seal); box-shadow: inset 0 0 0 1px var(--seal); background: var(--sheet); }
+.ind .t { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ind .t b { font-family: var(--f-display); font-size: 19px; }
+.ind .t span { font-size: 12px; color: var(--seal); letter-spacing: .1em; }
+.ind p { margin: 0; font-size: 13px; }
+.ind ul { margin: 2px 0 0; padding-left: 1.1em; font-size: 12px; color: var(--muted); }
+.setup .go { justify-self: end; }
+@media (prefers-reduced-motion: reduce) { .hanko { animation: none; opacity: .92; } .goal .fill { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div class="who">
+      <span class="label">社名（クリックで変更）</span>
+      <input id="company-name" type="text" maxlength="24" aria-label="社名">
+      <div class="ind-chip" id="ind-chip"></div>
+      <div class="period" id="period"></div>
+    </div>
+    <div class="goal">
+      <div class="row"><span>目標：純資産 1億円</span><span class="num" id="goal-pct"></span></div>
+      <div class="bar"><div class="fill" id="goal-fill"></div></div>
+      <div class="row muted"><span id="goal-net"></span><span id="goal-left"></span></div>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis" aria-label="経営指標"></section>
+
+  <div class="cols">
+    <section class="panel" aria-labelledby="h-decide">
+      <h2 id="h-decide">経営会議 <small>今月の方針を決める</small></h2>
+      <div class="forecast" id="forecast"></div>
+      <div id="bottleneck"></div>
+
+      <div class="section">
+        <h3>販売価格 <span id="price-v"></span></h3>
+        <input id="price" type="range" min="3000" max="30000" step="500" aria-label="販売価格">
+        <div class="hint" id="price-hint"></div>
+      </div>
+
+      <div class="section">
+        <h3>広告費（月） <span id="ads-v"></span></h3>
+        <input id="ads" type="range" min="0" max="5000000" step="100000" aria-label="広告費">
+        <div class="hint">認知度を上げる。何もしないと認知度は毎月 4% ずつ下がる。</div>
+      </div>
+
+      <div class="section">
+        <h3>人員 <span id="head-v"></span></h3>
+        <div class="staff" id="staff"></div>
+        <div class="hint">採用費は 1人 20万円。解雇は給与1か月分の退職金がかかり、士気が下がる。どれも月を締めたときに反映され、同じ月のうちなら＋/−で取り消せる。</div>
+      </div>
+
+      <div class="section">
+        <h3>福利厚生</h3>
+        <div class="seg" id="welfare" role="group" aria-label="福利厚生"></div>
+        <div class="hint">1人あたりの月額。士気が高いほど生産性が上がり、退職が減る。</div>
+      </div>
+
+      <div class="section">
+        <h3>オフィス</h3>
+        <div class="buy" id="office"></div>
+      </div>
+
+      <div class="section">
+        <h3 id="equip-h">製造設備</h3>
+        <div class="buy" id="equip"></div>
+      </div>
+
+      <div class="section">
+        <h3>資金調達 <span id="debt-v"></span></h3>
+        <div class="buy">
+          <div class="now hint" id="loan-hint"></div>
+          <div class="btn-row">
+            <button class="btn" data-act="borrow">500万円 借りる</button>
+            <button class="btn" data-act="repay">500万円 返す</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="stack">
+      <section class="panel" aria-labelledby="h-pl">
+        <h2 id="h-pl">損益計算書 <small id="pl-when"></small></h2>
+        <table class="ledger" id="pl"></table>
+      </section>
+
+      <section class="panel" aria-labelledby="h-chart">
+        <h2 id="h-chart">純資産の推移 <small>現金 − 借入金</small></h2>
+        <div class="chart-box"><canvas id="chart" aria-label="純資産の推移グラフ" role="img"></canvas></div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-log">
+        <h2 id="h-log">社内報</h2>
+        <ul class="log" id="log"></ul>
+      </section>
+    </div>
+  </div>
+
+  <div class="foot">
+    <button class="link-btn" data-act="reset-ask">最初からやり直す</button>
+  </div>
+</div>
+
+<div class="close-bar">
+  <div class="in">
+    <div class="sum" id="close-sum"></div>
+    <button class="close-btn" id="close-btn" data-act="close">今月を締める</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="m-title" id="modal"></div>
+</div>
+
+<script>
+(() => {
+  // 業種ごとの設定。価格・原価率・市場規模・人件費・認知度の効き方が変わる
+  const INDUSTRIES = {
+    factory: {
+      name: '町工場', defaultName: '株式会社ひかり製作所', level: '★', tag: '精密部品を作って売るものづくり。基本に忠実な経営で伸びる。',
+      traits: ['設備投資で原価が大きく下がる', '競合の進化はゆるやか'],
+      unit: '個', basePrice: 8000, price: { min: 3000, max: 30000, step: 500 },
+      market: 1500, capPer: 200, salesPer: 120,
+      roles: { dev: ['開発', '部品の品質を上げる', 400000], sales: ['営業', '需要を直接増やす', 350000], prod: ['製造', '生産能力 +200個/月', 300000] },
+      equipLabel: '製造設備', equip: [['手作業', 0, 0.375, 0], ['半自動ライン', 5000000, 0.3, 0.25], ['全自動工場', 15000000, 0.225, 0.5]],
+      qExp: 1.2, qRise: 0.35, decay: 0.96, bw: 1, wom: 1,
+      first: 'まずは製造を増やして赤字を止めよう。',
+    },
+    restaurant: {
+      name: '飲食店', defaultName: 'ひかり食堂', level: '★★', tag: '客単価は低いが数で稼ぐ。口コミが店の命運を握る。',
+      traits: ['売れるほど口コミで認知度が伸びる', '何もしないと客足が離れるのも早い'],
+      unit: '食', basePrice: 1200, price: { min: 500, max: 4500, step: 50 },
+      market: 10000, capPer: 1300, salesPer: 800,
+      roles: { dev: ['メニュー開発', '料理の評価を上げる', 320000], sales: ['ホール', '来客を増やす', 260000], prod: ['調理', '提供数 +1,300食/月', 260000] },
+      equipLabel: '厨房設備', equip: [['小さな厨房', 0, 0.38, 0], ['業務用厨房', 4000000, 0.32, 0.25], ['セントラルキッチン', 14000000, 0.26, 0.5]],
+      qExp: 1.1, qRise: 0.4, decay: 0.93, bw: 1, wom: 1.8,
+      first: 'まずは調理担当を増やして、来てくれるお客さんに料理を出し切ろう。',
+    },
+    apparel: {
+      name: 'アパレル', defaultName: '株式会社ひかりモード', level: '★★', tag: 'ブランド力がすべて。広告で名前を売れば高くても売れる。',
+      traits: ['認知度が需要に強く効く', 'デザインの差は売上に出にくい'],
+      unit: '着', basePrice: 6000, price: { min: 2000, max: 25000, step: 500 },
+      market: 2000, capPer: 260, salesPer: 160,
+      roles: { dev: ['デザイナー', 'デザインの評価を上げる', 380000], sales: ['販売員', '売り場の売上を増やす', 300000], prod: ['縫製', '生産数 +260着/月', 280000] },
+      equipLabel: '縫製設備', equip: [['手縫い工房', 0, 0.4, 0], ['縫製工場と提携', 5000000, 0.33, 0.25], ['自社縫製工場', 15000000, 0.26, 0.5]],
+      qExp: 0.9, qRise: 0.35, decay: 0.94, bw: 1.5, wom: 1.2,
+      first: 'まずは縫製を増やしつつ、広告で名前を知ってもらおう。',
+    },
+    it: {
+      name: 'IT企業', defaultName: '株式会社ひかりテクノロジー', level: '★★★', tag: '業務用ソフトを売る。原価はほぼゼロだが人件費が重い。',
+      traits: ['利益率が高い', '技術の進化が速く、開発を止めるとすぐ負ける'],
+      unit: '件', basePrice: 30000, price: { min: 10000, max: 120000, step: 1000 },
+      market: 400, capPer: 45, salesPer: 35,
+      roles: { dev: ['エンジニア', '製品の性能を上げる', 550000], sales: ['営業', '契約を増やす', 500000], prod: ['サポート', '対応件数 +45件/月', 400000] },
+      equipLabel: 'サーバー', equip: [['レンタルサーバー', 0, 0.08, 0], ['クラウド基盤', 6000000, 0.06, 0.3], ['自社データセンター', 18000000, 0.04, 0.6]],
+      qExp: 1.4, qRise: 0.6, decay: 0.96, bw: 0.9, wom: 0.8,
+      first: '人件費が重いので、まずはサポートを増やして契約を受けきろう。',
+    },
+  };
+  let IND, ROLES, EQUIP;
+  function applyInd(s) {
+    if (!INDUSTRIES[s.ind]) s.ind = 'factory';
+    IND = INDUSTRIES[s.ind];
+    ROLES = Object.fromEntries(Object.entries(IND.roles).map(([k, [label, desc, salary]]) => [k, { label, desc, salary }]));
+    EQUIP = IND.equip.map(([name, cost, ratio, boost]) => ({ name, cost, unit: Math.round(IND.basePrice * ratio), boost }));
+  }
+  const HIRE_FEE = 200000;
+  const SELL_RATE = 0.5; // 設備の売却額（購入額に対する割合）
+  const OFFICES = [
+    { name: '雑居ビルの一室', cap: 5,   rent: 300000,  cost: 0 },
+    { name: '駅前オフィス',   cap: 15,  rent: 900000,  cost: 3000000 },
+    { name: '自社ビル',       cap: 40,  rent: 2200000, cost: 12000000 },
+    { name: '本社タワー',     cap: 100, rent: 5000000, cost: 40000000 },
+  ];
+  const WELFARE = [
+    { name: 'なし',   per: 0,     mor: 0 },
+    { name: '標準',   per: 20000, mor: 12 },
+    { name: '手厚い', per: 50000, mor: 25 },
+  ];
+  const GOAL = 100000000, LIMIT = 60, RATE = 0.008, LOAN = 5000000;
+  const SAVE_KEY = 'shacho-ledger-v1';
+
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const $ = id => document.getElementById(id);
+  const man = n => {
+    const a = Math.abs(n), s = n < 0 ? '-' : '';
+    if (a >= 1e8) return s + (a / 1e8).toFixed(2).replace(/\.?0+$/, '') + '億円';
+    return s + Math.round(a / 1e4).toLocaleString('ja-JP') + '万円';
+  };
+  const ledgerYen = n => (n < 0 ? '▲' : '') + man(Math.abs(n));
+  const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const signed = n => (n >= 0 ? '+' : '▲') + man(Math.abs(n));
+  const yen = n => Math.round(n).toLocaleString('ja-JP') + '円';
+  const monthLabel = m => `第${Math.floor(m / 12) + 1}期 ${((m + 3) % 12) + 1}月`;
+  const shortLabel = m => `${Math.floor(m / 12) + 1}期${((m + 3) % 12) + 1}月`;
+
+  function fresh(name, ind) {
+    const curInd = INDUSTRIES[ind] || INDUSTRIES.factory;
+    return {
+      name: name || curInd.defaultName, ind: INDUSTRIES[ind] ? ind : 'factory',
+      month: 0, cash: 10000000, debt: 0,
+      staff: { dev: 1, sales: 1, prod: 1 },
+      office: 0, equip: 0, price: curInd.basePrice, ads: 300000, welfare: 0,
+      quality: 50, marketQ: 50, brand: 10, morale: 70, salaryMult: 1,
+      mods: [], history: [{ m: -1, net: 10000000 }], log: [], lastPL: null,
+      negMonths: 0, notice: null, report: null, over: null,
+      hired: { dev: 0, sales: 0, prod: 0 }, fired: { dev: 0, sales: 0, prod: 0 }, feeDeferred: true,
+    };
+  }
+  let S;
+
+  const headcount = s => s.staff.dev + s.staff.sales + s.staff.prod;
+  const modMul = (s, t) => s.mods.filter(m => m.type === t).reduce((a, m) => a * m.v, 1);
+  const modSum = (s, t) => s.mods.filter(m => m.type === t).reduce((a, m) => a + m.v, 0);
+  const valuePrice = s => {
+    const raw = Math.round(IND.basePrice * Math.pow(s.quality / s.marketQ, IND.qExp) / IND.price.step) * IND.price.step;
+    return clamp(raw, IND.price.min, IND.price.max);
+  };
+  const loanLimit = s => {
+    const recent = s.history.slice(-3).filter(h => h.revenue != null);
+    const avg = recent.length ? recent.reduce((a, h) => a + h.revenue, 0) / recent.length : 0;
+    return Math.floor((20000000 + avg * 3) / LOAN) * LOAN;
+  };
+
+  // 今の方針で1か月回したときの数字（予測にも締めにも使う）
+  function project(s) {
+    const prodF = 0.6 + s.morale / 250;
+    const cap = Math.round(s.staff.prod * IND.capPer * (1 + EQUIP[s.equip].boost) * prodF);
+    const r = s.quality / s.marketQ;
+    const market = IND.market * (1 + s.month * 0.012) * modMul(s, 'econ');
+    const safePrice = Math.max(1, s.price);
+    const priceF = Math.min(3, Math.pow(IND.basePrice * Math.pow(r, IND.qExp) / safePrice, 2));
+    const demand = Math.max(0, Math.round((market * (0.12 + s.brand * IND.bw / 100) + s.staff.sales * IND.salesPer * prodF) * Math.pow(r, IND.qExp) * priceF));
+    const units = Math.min(demand, cap);
+    const unitCost = EQUIP[s.equip].unit + modSum(s, 'cost');
+    const revenue = units * s.price;
+    const cogs = units * unitCost;
+    const payroll = Math.round(Object.keys(ROLES).reduce((a, k) => a + s.staff[k] * ROLES[k].salary, 0) * s.salaryMult);
+    const rent = OFFICES[s.office].rent;
+    const ads = s.ads;
+    const welfare = WELFARE[s.welfare].per * headcount(s);
+    const recruit = Object.keys(ROLES).reduce((a, k) => a + (s.hired?.[k] || 0), 0) * HIRE_FEE;
+    const severance = Math.round(Object.keys(ROLES).reduce((a, k) => a + (s.fired?.[k] || 0) * ROLES[k].salary, 0) * s.salaryMult);
+    const interest = Math.round(s.debt * RATE);
+    const profit = revenue - cogs - payroll - rent - ads - welfare - recruit - severance - interest;
+    return { price: s.price, prodF, cap, r, demand, units, unitCost, revenue, cogs, payroll, rent, ads, welfare, recruit, severance, interest, profit };
+  }
+
+  // 月を締めたあとの士気（予測にも締めにも使う）
+  function nextMorale(s, p) {
+    const firedN = Object.values(s.fired).reduce((a, n) => a + n, 0);
+    const target = 50 + WELFARE[s.welfare].mor + (p.profit > 0 ? 8 : -8) - (p.demand > p.cap * 1.6 ? 6 : 0);
+    return clamp(s.morale + (target - s.morale) * 0.25 - firedN * 8, 0, 100);
+  }
+
+  function log(text, alert) {
+    S.log.unshift({ m: S.month, text, alert: !!alert });
+    S.log.length = Math.min(S.log.length, 60);
+  }
+
+  // ---------- events ----------
+  const EVENTS = [
+    { id: 'tv', w: 6, title: 'テレビで紹介された', seal: '吉報',
+      run: s => { s.brand = clamp(s.brand + 15, 0, 100); return '情報番組で商品が取り上げられました。認知度が 15 上がります。'; } },
+    { id: 'rival', w: 8, title: '競合が新製品を発表', seal: '警戒',
+      run: s => { s.marketQ += 5; return '市場の品質水準が上がりました。開発を怠ると相対的な品質が落ちます。'; } },
+    { id: 'material', w: 6, title: '原材料が値上がり', seal: '注意',
+      run: s => {
+        const v = Math.round(IND.basePrice * 0.075);
+        s.mods.push({ type: 'cost', v, left: 6, name: '原材料高' });
+        return `6か月間、1${IND.unit}あたりの原価が ${yen(v)} 上がります。`;
+      } },
+    { id: 'boom', w: 4, title: '景気が上向いた', seal: '好況',
+      run: s => { s.mods.push({ type: 'econ', v: 1.2, left: 6, name: '好景気' }); return '6か月間、市場規模が 20% 大きくなります。'; } },
+    { id: 'slump', w: 4, title: '景気が冷え込んだ', seal: '不況',
+      run: s => { s.mods.push({ type: 'econ', v: 0.8, left: 6, name: '不景気' }); return '6か月間、市場規模が 20% 小さくなります。'; } },
+    { id: 'break', w: 5, cond: s => s.staff.prod > 0, title: '設備トラブルが発生', seal: '故障',
+      run: s => { const c = 500000 + s.staff.prod * 100000; s.cash -= c; return `修理費として ${man(c)} を支払いました。`; } },
+    { id: 'quit', w: 7, cond: s => s.morale < 50 && headcount(s) > 1, title: '社員が退職した', seal: '退職',
+      run: s => {
+        const ks = Object.keys(ROLES).filter(k => s.staff[k] > 0);
+        const k = ks[Math.floor(Math.random() * ks.length)];
+        s.staff[k]--; s.morale = clamp(s.morale - 3, 0, 100);
+        return `士気の低さから${ROLES[k].label}担当が 1人 辞めました。福利厚生を見直しましょう。`;
+      } },
+    { id: 'talent', w: 4, cond: s => headcount(s) < OFFICES[s.office].cap, title: '優秀な人材から応募', seal: '人材',
+      get text() { return `大手出身の${ROLES.dev.label}が入社を希望しています。採用費はかかりません（給与は通常どおり）。`; },
+      options: [
+        { label: '採用する', run: s => { s.staff.dev++; s.morale = clamp(s.morale + 3, 0, 100); return `${ROLES.dev.label}担当が 1人 増えました。`; } },
+        { label: '見送る', run: () => '今回は見送りました。' },
+      ] },
+    { id: 'bigorder', w: 5, cond: s => s.month > 2, title: '大口の注文が入った', seal: '受注',
+      run: s => {
+        const p = project(s);
+        const n = Math.round(2000000 / IND.basePrice);
+        const gain = Math.max(300000, Math.round(n * (s.price - p.unitCost) * Math.min(p.r, 1.5)));
+        s.cash += gain; return `法人から ${n.toLocaleString()}${IND.unit} の特別注文。粗利 ${man(gain)} が入金されました。`;
+      } },
+    { id: 'subsidy', w: 3, title: '補助金が採択された', seal: '採択',
+      run: s => { s.cash += 1000000; return '自治体の補助金 100万円 が入金されました。'; } },
+    { id: 'flame', w: 4, cond: s => s.brand > 20, title: 'SNSで炎上', seal: '炎上',
+      run: s => { s.brand = clamp(s.brand - 10, 0, 100); s.morale = clamp(s.morale - 5, 0, 100); return '社員の投稿が拡散されました。認知度 −10、士気 −5。'; } },
+    { id: 'discount', w: 5, title: '取引先から値引き要求', seal: '交渉',
+      text: '主要取引先が今期の値引きを求めています。応じれば関係は深まります。',
+      options: [
+        { label: '応じる（80万円）', cost: 800000, run: s => { s.cash -= 800000; s.brand = clamp(s.brand + 5, 0, 100); return '値引きに応じました。認知度 +5。'; } },
+        { label: '断る', run: s => { s.brand = clamp(s.brand - 4, 0, 100); return '要求を断りました。認知度 −4。'; } },
+      ] },
+    { id: 'raise', w: 5, cond: s => headcount(s) >= 3, title: '社員が昇給を求めている', seal: '要望',
+      text: '社員の代表が全員の給与 5% アップを求めています。',
+      options: [
+        { label: '5% 昇給する', run: s => { s.salaryMult *= 1.05; s.morale = clamp(s.morale + 15, 0, 100); return '昇給しました。士気 +15。人件費は今後 5% 上がります。'; } },
+        { label: '見送る', run: s => { s.morale = clamp(s.morale - 12, 0, 100); return '昇給を見送りました。士気 −12。'; } },
+      ] },
+    { id: 'tech', w: 4, title: '新技術の売り込み', seal: '商談',
+      text: 'ベンチャー企業が製造技術のライセンスを 300万円 で提案しています。品質が大きく上がります。',
+      options: [
+        { label: '300万円で導入', cost: 3000000, run: s => { s.cash -= 3000000; s.quality += 8; return '新技術を導入しました。品質 +8。'; } },
+        { label: '見送る', run: () => '提案を見送りました。' },
+      ] },
+    { id: 'award', w: 3, cond: s => s.quality > s.marketQ * 1.2, title: '業界の賞を受賞', seal: '受賞',
+      run: s => { s.brand = clamp(s.brand + 10, 0, 100); s.morale = clamp(s.morale + 10, 0, 100); return '品質が評価されました。認知度 +10、士気 +10。'; } },
+  ];
+
+  function rollEvent() {
+    if (Math.random() > 0.42) return;
+    const pool = EVENTS.filter(e => !e.cond || e.cond(S));
+    let t = Math.random() * pool.reduce((a, e) => a + e.w, 0);
+    const ev = pool.find(e => (t -= e.w) < 0) || pool[0];
+    if (ev.options) {
+      S.notice = { id: ev.id, title: ev.title, seal: ev.seal, body: ev.text, choice: true };
+    } else {
+      const body = ev.run(S);
+      S.notice = { title: ev.title, seal: ev.seal, body };
+      log(`${ev.title}：${body}`, ['警戒', '注意', '不況', '故障', '退職', '炎上'].includes(ev.seal));
+    }
+  }
+
+  function choose(i) {
+    const ev = EVENTS.find(e => e.id === S.notice.id);
+    const opt = ev?.options?.[i];
+    if (!opt) return;
+    if (opt.cost && S.cash < opt.cost) return;
+    const res = opt.run(S);
+    log(`${ev.title}：${res}`);
+    S.notice = null;
+    afterChange();
+  }
+
+  // ---------- month close ----------
+  function closeMonth() {
+    if (S.over || S.notice || S.report) return;
+    const p = project(S);
+    const prevQuality = S.quality, prevBrand = S.brand, prevMorale = S.morale;
+    S.cash += p.profit;
+    const firedN = Object.values(S.fired).reduce((a, n) => a + n, 0);
+    const lead = (S.quality - S.marketQ) / 80;
+    S.quality += S.staff.dev * p.prodF * clamp(1 - lead, 0.15, 1.5) * (IND.qRise / 0.35);
+    S.marketQ += IND.qRise;
+    S.brand = clamp(S.brand * IND.decay + (S.ads / 1e5) * (1 - S.brand / 100) + (p.revenue / 2e7) * IND.wom * Math.min(p.r, 1.5), 0, 100);
+    S.morale = nextMorale(S, p);
+    if (firedN) log(`${firedN}人の解雇で士気が下がった（−${firedN * 8}）。退職金 ${man(p.severance)}。`, true);
+    S.hired = { dev: 0, sales: 0, prod: 0 }; S.fired = { dev: 0, sales: 0, prod: 0 };
+    S.mods.forEach(m => m.left--);
+    S.mods = S.mods.filter(m => m.left > 0);
+
+    S.lastPL = { ...p, m: S.month };
+    S.history.push({ m: S.month, net: S.cash - S.debt, revenue: p.revenue, profit: p.profit });
+    log(`${monthLabel(S.month)}を締めた。売上 ${man(p.revenue)}、損益 ${signed(p.profit)}。`, p.profit < 0);
+    const closedMonth = S.month;
+    S.month++;
+
+    const net = S.cash - S.debt;
+    let isShortage = false;
+    if (S.cash < 0) {
+      S.negMonths++;
+      if (S.negMonths >= 2) return endGame('bankrupt');
+      log('現金がマイナスです。来月も赤字のままだと倒産します。借入か経費削減を。', true);
+      isShortage = true;
+    } else {
+      S.negMonths = 0;
+      if (net >= GOAL) return endGame('win');
+      if (S.month >= LIMIT) return endGame('timeup');
+      rollEvent();
+    }
+
+    let comment = '';
+    if (isShortage) {
+      comment = `【資金ショート警告】現金が ${man(S.cash)} とマイナスです！来月末までに借入やコスト削減でプラスに戻さないと倒産します。`;
+    } else if (p.cap === 0) {
+      comment = '製造担当が0人のため、商品を供給できませんでした。製造スタッフを採用しましょう。';
+    } else if (p.demand > p.cap * 1.25) {
+      comment = `需要が旺盛で、生産能力を上回る ${(p.demand - p.cap).toLocaleString()}${IND.unit} の販売機会を逃しました。増員や設備導入を検討しましょう。`;
+    } else if (p.cap > p.demand * 1.3) {
+      comment = `生産能力に対して需要が ${(p.cap - p.demand).toLocaleString()}${IND.unit} 余りました。広告費の増額や価格調整を検討しましょう。`;
+    } else if (p.profit < 0) {
+      comment = '今月は赤字となりました。人件費や家賃、広告費などの固定費を見直しましょう。';
+    } else if (p.profit >= 1500000) {
+      comment = '大繁盛です！大幅な黒字を計上しました。利益を設備投資や人材採用に回してさらなる成長を。';
+    } else {
+      comment = '手堅く黒字を確保しました。この調子で純資産1億円を目指しましょう。';
+    }
+
+    let evReport = null;
+    if (S.notice && !S.notice.choice) {
+      evReport = { ...S.notice };
+      S.notice = null;
+    }
+
+    S.report = {
+      m: closedMonth,
+      revenue: p.revenue,
+      profit: p.profit,
+      units: p.units,
+      demand: p.demand,
+      cap: p.cap,
+      cash: S.cash,
+      net: S.cash - S.debt,
+      prevQuality, quality: S.quality,
+      prevBrand, brand: S.brand,
+      prevMorale, morale: S.morale,
+      comment,
+      event: evReport,
+      shortage: isShortage,
+    };
+
+    afterChange();
+  }
+
+  function endGame(kind) {
+    const net = S.cash - S.debt;
+    let rank, title, body;
+    if (kind === 'win') {
+      rank = S.month <= 24 ? 'S' : S.month <= 36 ? 'A' : S.month <= 48 ? 'B' : 'C';
+      title = '目標達成'; body = `${S.month}か月で純資産 1億円 に到達しました。`;
+    } else if (kind === 'timeup') {
+      rank = net >= 5e7 ? 'C' : 'D';
+      title = '5期が終了'; body = `60か月が経ちました。最終的な純資産は ${man(net)} です。`;
+    } else {
+      rank = '倒産'; title = '倒産しました'; body = '2か月続けて資金がショートし、会社をたたむことになりました。';
+    }
+    S.over = { kind, rank, title, body };
+    log(`${title}。${body}`, kind === 'bankrupt');
+    afterChange();
+  }
+
+  // ---------- actions ----------
+  function act(a, arg) {
+    if (S.over && a !== 'reset' && a !== 'reset-ask' && a !== 'dismiss' && a !== 'dismiss-report') return;
+    const room = OFFICES[S.office].cap - headcount(S);
+    switch (a) {
+      case 'hire':
+        if (room <= 0) return;
+        if (S.fired[arg] > 0) {
+          // 今月の解雇を取り消す（退職金・士気低下なし）
+          S.fired[arg]--; S.staff[arg]++; log(`${ROLES[arg].label}担当の解雇を取り消した。`); break;
+        }
+        S.staff[arg]++; S.hired[arg]++; log(`${ROLES[arg].label}担当を 1人 採用した（採用費 ${man(HIRE_FEE)} は月末に計上）。`); break;
+      case 'fire': {
+        if (S.staff[arg] <= 0) return;
+        if (S.hired[arg] > 0) {
+          // 今月の採用を取り消す（採用費は戻る）
+          S.hired[arg]--; S.staff[arg]--; log(`${ROLES[arg].label}担当の採用を取り消した。`); break;
+        }
+        const sev = Math.round(ROLES[arg].salary * S.salaryMult);
+        S.staff[arg]--; S.fired[arg]++;
+        log(`${ROLES[arg].label}担当を 1人 解雇予定にした（月末に退職金 ${man(sev)}・士気 −8）。`, true); break;
+      }
+      case 'welfare': S.welfare = +arg; break;
+      case 'office': {
+        const nx = OFFICES[S.office + 1];
+        if (!nx || S.cash < nx.cost) return;
+        S.cash -= nx.cost; S.office++; log(`${nx.name}へ移転した（${man(nx.cost)}）。`); break;
+      }
+      case 'office-down': {
+        const ob = OFFICES[S.office - 1];
+        if (!ob || headcount(S) > ob.cap) return;
+        S.office--; log(`${ob.name}へ縮小移転した（家賃 ${man(ob.rent)}/月）。`); break;
+      }
+      case 'equip-sell': {
+        if (S.equip <= 0) return;
+        const e = EQUIP[S.equip], gain = Math.round(e.cost * SELL_RATE);
+        S.cash += gain; S.equip--; log(`${e.name}を売却した（+${man(gain)}）。`); break;
+      }
+      case 'equip': {
+        const nx = EQUIP[S.equip + 1];
+        if (!nx || S.cash < nx.cost) return;
+        S.cash -= nx.cost; S.equip++; log(`${nx.name}を導入した（${man(nx.cost)}）。`); break;
+      }
+      case 'borrow':
+        if (S.debt + LOAN > loanLimit(S)) return;
+        S.debt += LOAN; S.cash += LOAN; log(`銀行から ${man(LOAN)} を借りた。`); break;
+      case 'repay':
+        if (S.debt < LOAN || S.cash < LOAN) return;
+        S.debt -= LOAN; S.cash -= LOAN; log(`借入金を ${man(LOAN)} 返済した。`); break;
+      case 'close': closeMonth(); return;
+      case 'choose': choose(+arg); return;
+      case 'dismiss': S.notice = null; break;
+      case 'dismiss-report': S.report = null; break;
+      case 'reset-ask':
+        S._confirmReset = true; break;
+      case 'reset-cancel': S._confirmReset = false; break;
+      case 'reset':
+        try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+        openSetup(S.name, S.ind); return;
+      case 'pick-ind': setup.ind = arg; preview(); render(); return;
+      case 'found': found(); return;
+      case 'pl-tab': S._plTab = arg; render(); return;
+    }
+    afterChange();
+  }
+
+  // ---------- setup (社名・業種を決めて設立) ----------
+  let setup = null;
+  function preview() {
+    S = fresh(setup.name, setup.ind);
+    applyInd(S);
+  }
+  function openSetup(name, ind) {
+    setup = { name: name || '', ind: ind || 'factory' };
+    preview();
+    render();
+    $('setup-name')?.focus();
+  }
+  function found() {
+    const curInd = INDUSTRIES[setup.ind] || INDUSTRIES.factory;
+    const name = (setup.name || '').trim() || curInd.defaultName;
+    S = fresh(name, setup.ind);
+    applyInd(S);
+    setup = null;
+    log(`${IND.name}「${S.name}」を設立した。資本金 1,000万円。${IND.first}`);
+    afterChange();
+  }
+
+  function afterChange() { if (!setup) save(); render(); }
+
+  // ---------- render ----------
+  function render() {
+    const p = project(S);
+    const net = S.cash - S.debt;
+    const isOver = !!S.over;
+    document.title = '社長の帳簿';
+    if (document.activeElement !== $('company-name')) $('company-name').value = S.name;
+    $('company-name').disabled = isOver;
+    $('ind-chip').innerHTML = `業種 <b>${IND.name}</b>`;
+    $('equip-h').textContent = IND.equipLabel;
+    Object.assign($('price'), IND.price);
+    $('period').textContent = S.over ? `${monthLabel(Math.max(0, S.month - 1))} で終了` : `${monthLabel(S.month)}（${S.month + 1}か月目）`;
+    const pct = clamp(net / GOAL, 0, 1);
+    $('goal-fill').style.width = (pct * 100).toFixed(1) + '%';
+    $('goal-pct').textContent = (pct * 100).toFixed(1) + '%';
+    $('goal-net').textContent = '純資産 ' + man(net);
+    $('goal-left').textContent = `残り ${Math.max(0, LIMIT - S.month)} か月`;
+
+    const rel = Math.round(p.r * 100);
+    const nm = Math.round(nextMorale(S, p)), dm = nm - Math.round(S.morale);
+    const moraleSub = isOver ? '' : `<span class="sub ${dm < 0 ? 'neg' : dm > 0 ? 'pos' : ''}">来月 ${nm}（${dm > 0 ? '+' : dm < 0 ? '▼' : '±'}${Math.abs(dm)}）</span>`;
+    const kpi = (label, v, cls = '', meter, tip = '', sub = '') => `<div class="kpi" ${tip ? `title="${tip}"` : ''}><span class="label">${label}</span><span class="v ${cls}">${v}</span>${sub}${meter != null ? `<span class="meter"><i style="width:${clamp(meter, 0, 100)}%"></i></span>` : ''}</div>`;
+    $('kpis').innerHTML =
+      kpi('現金', man(S.cash), S.cash < 0 ? 'neg' : '') +
+      kpi('借入金', man(S.debt)) +
+      kpi('純資産', man(net), net < 0 ? 'neg' : '') +
+      kpi('品質（市場比）', rel + '%', rel < 95 ? 'neg' : rel > 110 ? 'pos' : '', rel / 1.6, `自社品質: ${Math.round(S.quality)} / 市場水準: ${Math.round(S.marketQ)}`) +
+      kpi('認知度', Math.round(S.brand) + ' / 100', '', S.brand) +
+      kpi('士気', Math.round(S.morale) + ' / 100', S.morale < 50 ? 'neg' : '', S.morale, '', moraleSub);
+
+    $('forecast').innerHTML =
+      `<div><span class="label">見込み需要</span><span class="v">${p.demand.toLocaleString()}${IND.unit}</span></div>` +
+      `<div><span class="label">生産能力</span><span class="v">${p.cap.toLocaleString()}${IND.unit}</span></div>` +
+      `<div><span class="label">見込み損益</span><span class="v ${p.profit < 0 ? 'neg' : 'pos'}">${signed(p.profit)}</span></div>`;
+    let chip;
+    if (p.cap === 0) chip = `<span class="chip bad">生産能力ゼロ：製造担当を採用してください</span>`;
+    else if (p.demand > p.cap * 1.15) chip = `<span class="chip warn">生産が追いつかない：${(p.demand - p.cap).toLocaleString()}${IND.unit} の取りこぼし</span>`;
+    else if (p.cap > p.demand * 1.15) chip = `<span class="chip warn">需要が足りない：生産能力が ${(p.cap - p.demand).toLocaleString()}${IND.unit} 余る</span>`;
+    else chip = `<span class="chip ok">需要と生産のバランスが取れている</span>`;
+    const mods = S.mods.map(m => `<span class="chip ${m.type === 'econ' && m.v > 1 ? 'ok' : 'bad'}">${m.name} あと${m.left}か月</span>`).join(' ');
+    $('bottleneck').innerHTML = chip + (mods ? ' ' + mods : '');
+
+    $('price').value = S.price;
+    $('price').disabled = isOver;
+    $('price-v').textContent = yen(S.price);
+    const isLoss = S.price < p.unitCost;
+    $('price-hint').innerHTML = `今の品質なら適正価格は ${yen(valuePrice(S))} 前後。原価は 1${IND.unit} ${yen(p.unitCost)}。高くするほど需要は減る。` +
+      (isLoss ? ` <b class="neg">※販売価格が原価を下回っています（逆ざや）。</b>` : '');
+    $('ads').value = S.ads;
+    $('ads').disabled = isOver;
+    $('ads-v').textContent = man(S.ads);
+
+    const room = OFFICES[S.office].cap - headcount(S);
+    $('head-v').textContent = `${headcount(S)} / ${OFFICES[S.office].cap}人`;
+    $('staff').innerHTML = Object.entries(ROLES).map(([k, r]) => {
+      const canFire = !isOver && S.staff[k] > 0;
+      const canHire = !isOver && room > 0;
+      const pend = [
+        S.hired[k] ? `採用 ${S.hired[k]}人（月末 −${man(S.hired[k] * HIRE_FEE)}）` : '',
+        S.fired[k] ? `解雇予定 ${S.fired[k]}人（月末 −${man(Math.round(S.fired[k] * r.salary * S.salaryMult))}・士気 −${S.fired[k] * 8}）` : '',
+      ].filter(Boolean).join('／');
+      return `
+      <div class="r">
+        <div class="name"><b>${r.label}</b><small>${r.desc}</small>${pend ? `<small class="pend">${pend}</small>` : ''}</div>
+        <div class="stepper">
+          <button data-act="fire" data-arg="${k}" aria-label="${r.label}を1人減らす" ${canFire ? '' : 'disabled'}>−</button>
+          <output>${S.staff[k]}</output>
+          <button data-act="hire" data-arg="${k}" aria-label="${r.label}を1人採用" ${canHire ? '' : 'disabled'}>＋</button>
+        </div>
+        <span class="wage">${Math.round(r.salary * S.salaryMult / 1e4)}万/人</span>
+      </div>`;
+    }).join('');
+
+    $('welfare').innerHTML = WELFARE.map((w, i) => `<button data-act="welfare" data-arg="${i}" aria-pressed="${S.welfare === i}" ${isOver ? 'disabled' : ''}>${w.name}${w.per ? ` ${w.per / 1e4}万` : ''}</button>`).join('');
+
+    const o = OFFICES[S.office], on = OFFICES[S.office + 1], ob = OFFICES[S.office - 1];
+    const downFull = ob && headcount(S) > ob.cap;
+    const officeDown = ob ? `<button class="btn" data-act="office-down" ${downFull ? `title="人員が定員 ${ob.cap}人を超えています"` : ''} ${isOver || downFull ? 'disabled' : ''}>${ob.name}へ縮小<br><small>定員 ${ob.cap}人・家賃 ${man(ob.rent)}${downFull ? '（人員超過）' : ''}</small></button>` : '';
+    const officeNeed = on && S.cash < on.cost ? `title="資金不足（あと${man(on.cost - S.cash)}必要）"` : '';
+    $('office').innerHTML = `<div class="now"><b>${o.name}</b><div class="hint">定員 ${o.cap}人・家賃 ${man(o.rent)}/月</div></div>` +
+      (on ? `<button class="btn" data-act="office" ${officeNeed} ${isOver || S.cash < on.cost ? 'disabled' : ''}>${on.name}へ移転（${man(on.cost)}）<br><small>定員 ${on.cap}人・家賃 ${man(on.rent)}</small></button>` : '<span class="chip ok">最上位</span>') + officeDown;
+    const e = EQUIP[S.equip], en = EQUIP[S.equip + 1], eb = EQUIP[S.equip - 1];
+    const equipSell = eb ? `<button class="btn" data-act="equip-sell" ${isOver ? 'disabled' : ''}>${e.name}を売却（+${man(Math.round(e.cost * SELL_RATE))}）<br><small>${eb.name}に戻る・原価 ${yen(eb.unit)}</small></button>` : '';
+    const equipNeed = en && S.cash < en.cost ? `title="資金不足（あと${man(en.cost - S.cash)}必要）"` : '';
+    $('equip').innerHTML = `<div class="now"><b>${e.name}</b><div class="hint">原価 ${yen(e.unit)}/${IND.unit}・生産性 +${e.boost * 100}%</div></div>` +
+      (en ? `<button class="btn" data-act="equip" ${equipNeed} ${isOver || S.cash < en.cost ? 'disabled' : ''}>${en.name}（${man(en.cost)}）<br><small>原価 ${yen(en.unit)}・生産性 +${en.boost * 100}%</small></button>` : '<span class="chip ok">最上位</span>') + equipSell;
+
+    const lim = loanLimit(S);
+    const remain = Math.max(0, lim - S.debt);
+    $('debt-v').textContent = man(S.debt);
+    $('loan-hint').textContent = `借入可能額 ${man(remain)}（限度額 ${man(lim)}）・金利 月0.8%（今月の利息 ${man(Math.round(S.debt * RATE))}）`;
+    document.querySelector('[data-act="borrow"]').disabled = isOver || S.debt + LOAN > lim;
+    document.querySelector('[data-act="repay"]').disabled = isOver || S.debt < LOAN || S.cash < LOAN;
+
+    renderPL(p);
+    renderLog();
+    drawChart();
+
+    $('close-sum').innerHTML = S.over
+      ? `ゲーム終了：<b>${S.over.title}</b>`
+      : `${monthLabel(S.month)}の見込み損益 <b class="num ${p.profit < 0 ? 'neg' : 'pos'}">${signed(p.profit)}</b>${S.negMonths ? ' <span class="chip bad">資金ショート中</span>' : ''}` +
+        (S.cash + p.profit < 0
+          ? `<div class="neg" role="alert"><b>⚠ このまま締めると月末現金が ${man(S.cash + p.profit)} になり、${S.negMonths ? '倒産します' : '資金ショートします'}。</b></div>`
+          : '');
+    if (S.over) {
+      $('close-btn').textContent = '新しい会社を始める';
+      $('close-btn').disabled = false;
+      $('close-btn').dataset.act = 'reset';
+    } else {
+      $('close-btn').textContent = '今月を締める';
+      $('close-btn').disabled = !!S.notice || !!S.report;
+      $('close-btn').dataset.act = 'close';
+    }
+
+    renderModal();
+  }
+
+  function renderPL(p) {
+    const hasActual = !!S.lastPL;
+    const mode = hasActual ? (S._plTab || 'forecast') : 'forecast';
+    const L = (mode === 'actual' && S.lastPL) ? S.lastPL : p;
+
+    $('pl-when').innerHTML = hasActual ? `
+      <span class="pl-tabs">
+        <button type="button" class="pl-tab ${mode === 'forecast' ? 'active' : ''}" data-act="pl-tab" data-arg="forecast">${monthLabel(S.month)}（見込み）</button>
+        <button type="button" class="pl-tab ${mode === 'actual' ? 'active' : ''}" data-act="pl-tab" data-arg="actual">${monthLabel(S.lastPL.m)}（実績）</button>
+      </span>` : `${monthLabel(S.month)}（見込み）`;
+
+    const gross = L.revenue - L.cogs;
+    const sev = L.severance || 0, rec = L.recruit || 0;
+    const sga = L.payroll + L.rent + L.ads + L.welfare + rec + sev;
+    const row = (k, v, cls = '', isProfit = false) => {
+      const isNeg = isProfit && v < 0;
+      return `<tr class="${cls}"><td>${k}</td><td class="${isNeg ? 'neg' : ''}">${ledgerYen(v)}</td></tr>`;
+    };
+    const itemPrice = L.price != null ? L.price : (L.units > 0 ? Math.round(L.revenue / L.units) : S.price);
+    $('pl').innerHTML =
+      row(`売上高（${L.units.toLocaleString()}${IND.unit} ×${yen(itemPrice)}）`, L.revenue) +
+      row('売上原価', -L.cogs) +
+      row('売上総利益', gross, '', true) +
+      row('人件費', -L.payroll, 'sub') +
+      row('地代家賃', -L.rent, 'sub') +
+      row('広告宣伝費', -L.ads, 'sub') +
+      row('福利厚生費', -L.welfare, 'sub') +
+      (rec ? row('採用費', -rec, 'sub') : '') +
+      (sev ? row('退職金', -sev, 'sub') : '') +
+      row('営業利益', gross - sga, '', true) +
+      row('支払利息', -L.interest, 'sub') +
+      row('当月損益', L.profit, 'total', true);
+  }
+
+  function renderLog() {
+    $('log').innerHTML = S.log.slice(0, 40).map(l => `<li class="${l.alert ? 'alert' : ''}"><time>${shortLabel(Math.max(0, l.m))}</time><span>${esc(l.text)}</span></li>`).join('');
+  }
+
+  function drawChart() {
+    const c = $('chart'), dpr = window.devicePixelRatio || 1;
+    const w = c.clientWidth, h = c.clientHeight;
+    if (!w) return;
+    c.width = w * dpr; c.height = h * dpr;
+    const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    const cs = getComputedStyle(document.documentElement);
+    const ink = cs.getPropertyValue('--ink').trim(), rule = cs.getPropertyValue('--rule').trim(),
+      seal = cs.getPropertyValue('--seal').trim(), muted = cs.getPropertyValue('--muted').trim();
+    const data = S.history.map(x => x.net);
+    const maxV = Math.max(...data, 2e7), minV = Math.min(0, ...data);
+    const pad = { l: 64, r: 10, t: 10, b: 20 };
+    const X = i => pad.l + (data.length < 2 ? 0 : i / (data.length - 1)) * (w - pad.l - pad.r);
+    const Y = v => pad.t + (1 - (v - minV) / (maxV - minV)) * (h - pad.t - pad.b);
+    g.font = '11px "IBM Plex Mono", monospace'; g.fillStyle = muted; g.textAlign = 'right'; g.textBaseline = 'middle';
+    const step = niceStep((maxV - minV) / 4);
+    g.strokeStyle = rule; g.lineWidth = 1;
+    for (let v = Math.ceil(minV / step) * step; v <= maxV; v += step) {
+      const y = Math.round(Y(v)) + .5;
+      g.beginPath(); g.moveTo(pad.l, y); g.lineTo(w - pad.r, y); g.stroke();
+      g.fillText(man(v).replace('円', ''), pad.l - 6, y);
+    }
+    if (minV < 0) { g.strokeStyle = seal; g.beginPath(); g.moveTo(pad.l, Y(0)); g.lineTo(w - pad.r, Y(0)); g.stroke(); }
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    g.fillText('設立', pad.l, h - 4);
+    if (data.length > 1) { g.textAlign = 'right'; g.fillText(shortLabel(S.history[S.history.length - 1].m), w - pad.r, h - 4); }
+    if (data.length < 2) {
+      g.beginPath(); g.arc(pad.l, Y(data[0]), 4, 0, Math.PI * 2); g.fillStyle = seal; g.fill();
+      return;
+    }
+    g.beginPath(); data.forEach((v, i) => i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)));
+    g.lineTo(X(data.length - 1), Y(minV)); g.lineTo(X(0), Y(minV)); g.closePath();
+    g.globalAlpha = .1; g.fillStyle = ink; g.fill(); g.globalAlpha = 1;
+    g.beginPath(); data.forEach((v, i) => i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)));
+    g.strokeStyle = ink; g.lineWidth = 2; g.stroke();
+    const last = data.length - 1;
+    g.beginPath(); g.arc(X(last), Y(data[last]), 4, 0, Math.PI * 2); g.fillStyle = seal; g.fill();
+  }
+  function niceStep(raw) {
+    const p = Math.pow(10, Math.floor(Math.log10(raw)));
+    const n = raw / p;
+    return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * p;
+  }
+
+  function renderModal() {
+    const ov = $('overlay'), m = $('modal');
+    let html = '';
+    m.classList.toggle('setup', !!setup);
+    if (setup) {
+      const curInd = INDUSTRIES[setup.ind] || INDUSTRIES.factory;
+      html = `<div id="setup-form" style="display:grid;gap:18px">
+        <div><span class="label">会社設立届</span><h3 id="m-title">どんな会社を始めますか</h3></div>
+        <div class="field">
+          <label class="label" for="setup-name">社名</label>
+          <input id="setup-name" type="text" maxlength="24" placeholder="${curInd.defaultName}" value="${esc(setup.name)}" autocomplete="off">
+        </div>
+        <div class="field">
+          <span class="label">業種</span>
+          <div class="inds">${Object.entries(INDUSTRIES).map(([k, d]) => `
+            <button type="button" class="ind" data-act="pick-ind" data-arg="${k}" aria-pressed="${setup.ind === k}">
+              <span class="t"><b>${d.name}</b><span>難易度 ${d.level}</span></span>
+              <p>${d.tag}</p>
+              <ul>${d.traits.map(t => `<li>${t}</li>`).join('')}<li>商品単価 ${yen(d.basePrice)}／${d.unit}</li></ul>
+            </button>`).join('')}
+          </div>
+        </div>
+        <button type="button" class="close-btn go" data-act="found">この内容で設立する</button>
+      </div>`;
+    } else if (S._confirmReset) {
+      html = `<h3 id="m-title">最初からやり直しますか</h3><p>今の会社の記録はすべて消えます。</p>
+        <div class="btn-row"><button class="btn" data-act="reset-cancel">続ける</button><button class="btn primary" data-act="reset">やり直す</button></div>`;
+    } else if (S.over) {
+      const o = S.over, net = S.cash - S.debt;
+      const best = Math.max(...S.history.map(h => h.revenue || 0));
+      html = `<span class="hanko">${o.kind === 'bankrupt' ? '倒産' : '決算'}</span>
+        <h3 id="m-title">${o.title}</h3><p>${o.body}</p>
+        <div><span class="label">評価</span><div class="rank">${o.rank}</div></div>
+        <dl class="result">
+          <dt>経営期間</dt><dd>${S.month}か月</dd>
+          <dt>最終純資産</dt><dd>${man(net)}</dd>
+          <dt>最高月商</dt><dd>${man(best)}</dd>
+          <dt>社員数</dt><dd>${headcount(S)}人</dd>
+        </dl>
+        <div class="btn-row"><button class="btn" data-act="dismiss-over">帳簿を見る</button><button class="btn primary" data-act="reset">新しい会社を始める</button></div>`;
+      if (S._overSeen) html = '';
+    } else if (S.report) {
+      const r = S.report;
+      const dBrand = Math.round(r.brand) - Math.round(r.prevBrand);
+      const dMorale = Math.round(r.morale) - Math.round(r.prevMorale);
+      const signFmt = n => (n > 0 ? `+${n}` : `${n}`);
+      const seal = r.shortage ? '危機' : (r.profit >= 0 ? '黒字' : '赤字');
+      html = `<span class="hanko">${seal}</span>
+        <div style="padding-right:76px">
+          <h3 id="m-title" style="padding-right:0;margin:0 0 6px">${monthLabel(r.m)} 決算報告</h3>
+          <p class="hint" style="margin:0">${esc(r.comment)}</p>
+        </div>
+        <dl class="result">
+          <dt>売上高</dt><dd><b>${man(r.revenue)}</b>（${r.units.toLocaleString()}${IND.unit} / 需要 ${r.demand.toLocaleString()}${IND.unit}）</dd>
+          <dt>当月損益</dt><dd><b class="${r.profit < 0 ? 'neg' : 'pos'}">${signed(r.profit)}</b></dd>
+          <dt>月末現金</dt><dd><b>${man(r.cash)}</b>（純資産 ${man(r.net)}）</dd>
+          <dt>品質水準</dt><dd>${Math.round(r.quality / S.marketQ * 100)}%（自社 ${Math.round(r.quality)} / 市場 ${Math.round(S.marketQ)}）</dd>
+          <dt>ブランド認知度</dt><dd>${Math.round(r.brand)} / 100（${signFmt(dBrand)}）</dd>
+          <dt>社員士気</dt><dd>${Math.round(r.morale)} / 100（${signFmt(dMorale)}）</dd>
+        </dl>
+        ${r.event ? `<div style="background:var(--paper);border:1px dashed var(--rule);padding:8px 12px;font-size:13px;display:grid;gap:2px">
+          <span style="font-weight:700;color:var(--seal)">【今月の出来事】${esc(r.event.title)}</span>
+          <span class="muted">${esc(r.event.body)}</span>
+        </div>` : ''}
+        <div class="btn-row">
+          <button class="btn primary" data-act="dismiss-report">来月の方針を決める</button>
+        </div>`;
+    } else if (S.notice) {
+      const n = S.notice;
+      const ev = n.choice && EVENTS.find(e => e.id === n.id);
+      const optionsHtml = ev ? ev.options.map((o, i) => {
+        const disabled = o.cost && S.cash < o.cost;
+        return `<button class="btn ${i === 0 && !disabled ? 'primary' : ''}" ${disabled ? 'disabled title="資金が足りません"' : ''} data-act="choose" data-arg="${i}">${o.label}${disabled ? '（資金不足）' : ''}</button>`;
+      }).join('') : '<button class="btn primary" data-act="dismiss">了解</button>';
+      html = `<span class="hanko">${n.seal}</span><h3 id="m-title">${n.title}</h3><p>${n.body}</p>
+        <div class="btn-row">${optionsHtml}</div>`;
+    }
+    const wasHidden = ov.hidden;
+    ov.hidden = !html;
+    if (html && m.dataset.html !== html) { m.innerHTML = html; m.dataset.html = html; }
+    if (!html) m.dataset.html = '';
+    if (html && wasHidden && !setup) m.querySelector('.btn.primary, .btn')?.focus();
+  }
+
+  // ---------- persistence ----------
+  function save() {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {}
+  }
+  function load() {
+    try { const raw = localStorage.getItem(SAVE_KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+  }
+
+  // ---------- wiring ----------
+  document.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-act]');
+    if (!b || b.disabled) return;
+    if (b.dataset.act === 'dismiss-over') { S._overSeen = true; render(); return; }
+    if (b.dataset.act === 'reset') { S._confirmReset = false; S._overSeen = false; }
+    act(b.dataset.act, b.dataset.arg);
+  });
+  document.addEventListener('input', e => {
+    if (e.target.id === 'setup-name' && setup) {
+      setup.name = e.target.value;
+      const curInd = INDUSTRIES[setup.ind] || INDUSTRIES.factory;
+      S.name = e.target.value.trim() || curInd.defaultName;
+      $('company-name').value = S.name;
+    }
+  });
+  // 公開ページではフォーム送信がブロックされるので、form は使わずボタンと Enter キーで設立する
+  document.addEventListener('keydown', e => {
+    if (e.target.id === 'setup-name' && setup && e.key === 'Enter' && !e.isComposing) { e.preventDefault(); found(); }
+  });
+  $('price').addEventListener('input', e => { if (S.over) return; S.price = +e.target.value; render(); });
+  $('ads').addEventListener('input', e => { if (S.over) return; S.ads = +e.target.value; render(); });
+  $('price').addEventListener('change', () => { if (!S.over) save(); });
+  $('ads').addEventListener('change', () => { if (!S.over) save(); });
+  $('company-name').addEventListener('change', e => {
+    if (S.over) return;
+    const curInd = INDUSTRIES[S.ind] || INDUSTRIES.factory;
+    S.name = e.target.value.trim() || curInd.defaultName;
+    afterChange();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && S._confirmReset) act('reset-cancel');
+  });
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(drawChart, 100); });
+  window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', drawChart);
+  new MutationObserver(drawChart).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  function start(data) {
+    window.claude?.hot?.snapshot?.(() => ({ S, setup }));
+    setup = (data && data.setup) || null;
+    S = (data && data.S) || load();
+    if (S) {
+      if (!Array.isArray(S.mods)) S.mods = [];
+      if (!Array.isArray(S.history)) S.history = [{ m: -1, net: (S.cash || 0) - (S.debt || 0) }];
+      if (!Array.isArray(S.log)) S.log = [];
+      if (S.salaryMult == null) S.salaryMult = 1;
+      if (!S.hired) S.hired = { dev: 0, sales: 0, prod: 0 };
+      if (!S.fired) S.fired = { dev: 0, sales: 0, prod: 0 };
+      delete S.sevPending;
+      // 採用費を即時に払っていた頃のセーブ：今月の採用分は支払い済みなので二重に計上しない
+      if (!S.feeDeferred) { S.hired = { dev: 0, sales: 0, prod: 0 }; S.feeDeferred = true; }
+    }
+    if (setup || !S || !S.staff) {
+      openSetup(setup?.name, setup?.ind);
+    } else {
+      applyInd(S);
+      S._confirmReset = false;
+      render();
+    }
+    document.fonts?.ready.then(drawChart);
+  }
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>

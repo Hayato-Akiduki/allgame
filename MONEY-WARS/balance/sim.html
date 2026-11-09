@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>コイン・ウォーズ バランス検証</title>
+<style>
+body{font-family:"Noto Sans JP","Yu Gothic UI",sans-serif;font-size:13px;margin:16px;background:#fff;color:#222}
+table{border-collapse:collapse;margin:8px 0 18px}td,th{border:1px solid #ccc;padding:3px 8px;text-align:right}th{background:#f2f2f2}
+td:first-child,th:first-child{text-align:left}h2{font-size:15px;margin:20px 0 4px}#status{color:#666}
+</style>
+</head>
+<body>
+<h1 style="font-size:18px">コイン・ウォーズ バランス検証</h1>
+<p>money.html のゲームロジックをそのまま読み込み、ボットに自動プレイさせて集計します。ローカルサーバー経由で開いてください（file:// では読み込めません）。<br>
+URL に <code>?n=300</code> を付けると戦略ごとの試行回数を変えられます。</p>
+<div id="status">準備中…</div>
+<div id="out"></div>
+<script>
+(async()=>{
+  const html=await fetch('../money.html',{cache:'no-store'}).then(r=>r.text());
+  const game=html.slice(html.indexOf('<script>')+8,html.lastIndexOf('</'+'script>'));
+  const sim=await fetch('sim.js',{cache:'no-store'}).then(r=>r.text());
+  // DOM をすべて受け流すスタブ（描画は検証に不要）
+  const P=new Proxy(function(){},{get:(t,k)=>k===Symbol.toPrimitive?()=>0:k==='length'?0:P,set:()=>true,apply:()=>P,construct:()=>P});
+  // タイマーは自前のキューで同期的に回す
+  const T={q:[],iv:new Map(),id:0};
+  const stub={
+    document:P,window:P,Image:P,requestAnimationFrame:()=>{},confirm:()=>false,location:P,innerWidth:1280,innerHeight:800,
+    localStorage:{getItem:()=>null,setItem(){},removeItem(){}},
+    setTimeout:f=>{T.q.push(f);return 0},clearTimeout:()=>{},
+    setInterval:f=>{T.iv.set(++T.id,f);return T.id},clearInterval:id=>T.iv.delete(id),
+  };
+  const names=Object.keys(stub);
+  const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
+  const run=new AsyncFunction(...names,'__T','__out','__wait',game+'\n'+sim);
+  await run(...names.map(k=>stub[k]),T,{doc:document,status:document.getElementById('status'),out:document.getElementById('out'),params:new URLSearchParams(location.search)},()=>new Promise(r=>window.setTimeout(r,0)));
+})().catch(e=>{document.getElementById('status').textContent='エラー: '+e.stack;console.error(e)});
+</script>
+</body>
+</html>

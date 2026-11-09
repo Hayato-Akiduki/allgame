@@ -1,0 +1,59 @@
+{
+  "name": "allgame",
+  "productName": "ALLGAME",
+  "version": "1.2.1",
+  "description": "ゲーム詰め合わせアプリ",
+  "author": "akiduki",
+  "main": "app/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "sync": "node scripts/sync-minigame.js && node scripts/sync-japandrive.js",
+    "dist": "node scripts/sync-minigame.js && node scripts/sync-japandrive.js && electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.akiduki.allgame",
+    "productName": "ALLGAME",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "package.json",
+      "app/**/*",
+      "*.html",
+      "MONEY-WARS/起動.html",
+      "ライトFPS/**/*",
+      "城攻防戦/**/*",
+      "株ゲー/**/*",
+      "minigame/**/*",
+      "!**/.claude/**",
+      "!**/.gitignore",
+      "!**/README.md"
+    ],
+    "extraResources": [
+      {
+        "from": "native",
+        "to": "native"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ALLGAME",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "artifactName": "ALLGAME-Setup-${version}.${ext}"
+    }
+  },
+  "devDependencies": {
+    "electron": "^38.8.6",
+    "electron-builder": "^26.18.0"
+  }
+}
