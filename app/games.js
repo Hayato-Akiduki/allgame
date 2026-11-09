@@ -14,6 +14,8 @@ module.exports = [
     id: 'minigame', title: 'ミニゲームランド', path: 'minigame/index.html', genre: 'ミニゲーム集（37本）', color: '#4f8cff',
     // オフライン版: ランキングなどの /api/ はアプリ内（app/local-api.js）で処理し、記録はこのPCに保存する
     localApi: true,
+    // サイト版では公開中のミニゲームランドへのリンクにする（オンラインランキングが使える）
+    webUrl: 'https://mini-game-land.akiduki2ha46.workers.dev/',
   },
   { id: 'tetsu', title: '鉄の大陸', path: '鉄の大陸.html', genre: 'ストラテジー', color: '#8a9bb0' },
   {
