@@ -95,11 +95,19 @@
       return d && typeof d === 'object' && d.games ? d : { games: {} };
     } catch { return { games: {} }; }
   };
+  // 遊んだ日（YYYY-MM-DD）の一覧。スタンプ「〇日遊ぶ」に使う
+  const today = () => {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  };
   const update = (fn) => {
     try {
       const d = read();
       const g = d.games[id] || (d.games[id] = { plays: 0, ms: 0, last: 0 });
       fn(g);
+      const day = today();
+      d.days = Array.isArray(d.days) ? d.days : [];
+      if (!d.days.includes(day)) d.days = d.days.concat(day).slice(-400);
       localStorage.setItem(KEY, JSON.stringify(d));
     } catch { /* 保存できない環境では記録しない */ }
   };
