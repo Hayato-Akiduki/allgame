@@ -3,13 +3,12 @@
 //   npm run site:serve … 組み立ててこのPCで表示確認（http://localhost:8800）
 //
 // - 各ゲームは <id>/index.html に置く（日本語のファイル名を URL に出さないため）
-// - exe のゲーム（native）はサイトには入れない
 // - webUrl があるゲーム（ミニゲームランド）は公開中のサイトへのリンクにする
-// - トップページはアプリのゲーム選択画面（app/menu/index.html）をそのまま使う
+// - トップページは site/index.html
 // - 各ゲームの HTML に共通スクリプト（site/hub.js：一覧へ戻るタブなど）を読み込ませる
 const fs = require('fs');
 const path = require('path');
-const games = require('../app/games');
+const games = require('../site/games');
 const pkg = require('../package.json');
 
 const ROOT = path.join(__dirname, '..');
@@ -31,7 +30,6 @@ function injectHub(htmlFile) {
 
 const list = [];
 for (const g of games) {
-  if (g.native) continue;
   if (g.webUrl) {
     list.push({ id: g.id, icon: g.icon, title: g.title, genre: g.genre, color: g.color, url: g.webUrl, external: true });
     continue;
@@ -55,9 +53,8 @@ for (const g of games) {
   list.push({ id: g.id, icon: g.icon, title: g.title, genre: g.genre, color: g.color, url: `${g.id}/`, saveKeys: g.saveKeys || [] });
 }
 
-// トップページ: アプリのゲーム選択画面に、サイト版だけのプレイ記録（dashboard.js）と
-// セーブの書き出し・読み込み（backup.js）を足す
-const menuHtml = fs.readFileSync(path.join(ROOT, 'app', 'menu', 'index.html'), 'utf8');
+// トップページ: site/index.html に、プレイ記録（dashboard.js）とセーブの書き出し・読み込み（backup.js）を読み込ませる
+const menuHtml = fs.readFileSync(path.join(ROOT, 'site', 'index.html'), 'utf8');
 const siteScripts = '<script src="dashboard.js"></script>\n<script src="backup.js"></script>\n';
 fs.writeFileSync(path.join(OUT, 'index.html'), menuHtml.replace('<script>', siteScripts + '<script>'));
 fs.copyFileSync(path.join(ROOT, 'site', 'dashboard.js'), path.join(OUT, 'dashboard.js'));

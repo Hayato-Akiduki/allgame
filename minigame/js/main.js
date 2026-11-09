@@ -1,3 +1,0 @@
-
-loadSave();
-renderHome();

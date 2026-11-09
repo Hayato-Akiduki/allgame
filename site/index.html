@@ -2,13 +2,13 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' app:; img-src 'self' app: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
 <title>ALLGAME</title>
 <link rel="icon" href="icon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  /* ゲーム機のホーム画面風のトップページ。アプリ版とサイト版で共通。
-     サイト版では dashboard.js（記録・スタンプ）と backup.js（セーブ）が読み込まれ、メニューが増える。 */
+  /* ゲーム機のホーム画面風のトップページ。
+     サイトを組み立てるとき dashboard.js（記録・スタンプ）と backup.js（セーブ）が読み込まれる。 */
   :root {
     --bg: #0a0c11;
     --panel: #151922;
@@ -240,7 +240,6 @@
 <div class="fade" id="fade"></div>
 <script>
 (() => {
-  const IN_APP = location.protocol === 'app:';
   const UI_KEY = 'allgame-ui'; // 最後に選んでいたゲームと効果音のオン・オフ（このブラウザだけの設定）
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -427,7 +426,7 @@
       add(['←', '→'], 'えらぶ'); add([ok], 'けってい'); add(['↑'], 'ゲームにもどる');
     }
     h.appendChild(el('div', 'spacer'));
-    h.appendChild(el('span', null, `${padConnected ? '🎮 コントローラー接続中　' : ''}${IN_APP ? 'ゲーム中は Alt+Home で戻る　' : ''}v${version}`));
+    h.appendChild(el('span', null, `${padConnected ? '🎮 コントローラー接続中　' : ''}v${version}`));
   }
 
   // ---- ゲームを開く ----
@@ -555,9 +554,7 @@
     row(['M'], '効果音のオン・オフ');
     row(['A', 'B'], 'コントローラー：A でけってい、B でもどる（十字キーかスティックでえらぶ）');
     sheet.appendChild(keys);
-    sheet.appendChild(el('div', 'note', IN_APP
-      ? 'ゲーム中にこの画面へ戻るときは、上のメニューの「ゲーム → ゲーム一覧に戻る」か Alt+Home を使います。F11 で全画面になります。'
-      : 'ゲーム中にこの画面へ戻るときは、画面の上の真ん中にマウスを近づけると出てくる「◀ ALLGAME」を押します。F11 で全画面になります。'));
+    sheet.appendChild(el('div', 'note', 'ゲーム中にこの画面へ戻るときは、画面の上の真ん中にマウスを近づけると出てくる「◀ ALLGAME」を押します。F11 で全画面になります。'));
   }
 
   // ---- 通知 ----

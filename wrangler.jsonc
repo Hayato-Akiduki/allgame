@@ -1,9 +1,0 @@
-// サイト版 ALLGAME を Cloudflare に公開するための設定（静的ファイルのみ・サーバー処理なし）
-// 公開前に npm run site で site-dist/ を作っておく
-{
-  "name": "allgame",
-  "compatibility_date": "2026-09-03",
-  "assets": {
-    "directory": "./site-dist"
-  }
-}

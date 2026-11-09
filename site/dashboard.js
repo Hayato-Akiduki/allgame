@@ -1,6 +1,6 @@
 // サイト版 ALLGAME のプレイ記録・進み具合・スタンプを計算して、トップページに渡す。
-// トップページ（app/menu/index.html）が window.ALLGAME_DATA.load(games) を呼んで表示に使う。
-// 表示は全部トップページ側でする。アプリ版ではこのファイルを読み込まないので、記録の表示は出ない。
+// トップページ（site/index.html）が window.ALLGAME_DATA.load(games) を呼んで表示に使う。
+// 表示は全部トップページ側でする。
 //
 // 使うデータ（どれもこのブラウザの localStorage にあるもの。読むだけで書き換えない）
 // - allgame-stats … hub.js が記録するプレイ回数・時間・最後に遊んだ日時
