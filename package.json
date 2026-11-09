@@ -8,11 +8,11 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "sync": "node scripts/sync-minigame.js && node scripts/sync-japandrive.js",
+    "sync": "node scripts/sync-minigame.js",
     "site": "node scripts/build-site.js",
     "site:serve": "node scripts/build-site.js && node scripts/serve-site.js",
     "site:deploy": "node scripts/build-site.js && C:/Claude/minigame/node_modules/.bin/wrangler deploy",
-    "dist": "node scripts/sync-minigame.js && node scripts/sync-japandrive.js && electron-builder --win nsis"
+    "dist": "node scripts/sync-minigame.js && electron-builder --win nsis"
   },
   "build": {
     "appId": "com.akiduki.allgame",
@@ -32,12 +32,6 @@
       "!**/.claude/**",
       "!**/.gitignore",
       "!**/README.md"
-    ],
-    "extraResources": [
-      {
-        "from": "native",
-        "to": "native"
-      }
     ],
     "win": {
       "target": "nsis",

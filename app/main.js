@@ -1,5 +1,4 @@
-const { app, BrowserWindow, Menu, protocol, net, shell, dialog } = require('electron');
-const { spawn } = require('child_process');
+const { app, BrowserWindow, Menu, protocol, net, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
@@ -36,53 +35,7 @@ function resolveFile(url) {
 }
 
 function gameUrl(game) {
-  if (game.native) return `app://launch/${game.id}`;
   return `app://${game.id}/${encodeURIComponent(path.basename(game.path))}`;
-}
-
-// exe のゲーム（日本一周ドライブ3D など）は別ウィンドウで起動する。
-// インストール版では resources/native、開発中（npm start）はこのフォルダの native にある。
-let nativeChild = null;
-
-function nativePath(game) {
-  return app.isPackaged ? path.join(process.resourcesPath, game.path) : path.join(ROOT, game.path);
-}
-
-function launchNative(game) {
-  if (nativeChild) {
-    dialog.showMessageBox(win, { type: 'info', message: `${game.title} はすでに起動しています。` });
-    return;
-  }
-  const exe = nativePath(game);
-  if (!fs.existsSync(exe)) {
-    dialog.showErrorBox('起動できません', `${game.title} が見つかりませんでした。\n${exe}`);
-    return;
-  }
-  try {
-    nativeChild = spawn(exe, [], { cwd: path.dirname(exe), stdio: 'ignore' });
-  } catch (err) {
-    nativeChild = null;
-    dialog.showErrorBox('起動できません', String(err));
-    return;
-  }
-  nativeChild.on('error', (err) => {
-    nativeChild = null;
-    dialog.showErrorBox('起動できません', String(err));
-  });
-  // ゲームの間は ALLGAME を最小化し、終わったら元に戻す
-  win.minimize();
-  nativeChild.on('exit', () => {
-    nativeChild = null;
-    if (win && !win.isDestroyed()) {
-      win.restore();
-      win.focus();
-    }
-  });
-}
-
-function openGame(game) {
-  if (game.native) launchNative(game);
-  else win.loadURL(gameUrl(game));
 }
 
 const MENU_URL = 'app://menu/index.html';
@@ -95,7 +48,7 @@ function buildMenu() {
       submenu: [
         { label: 'ゲーム一覧に戻る', accelerator: 'Alt+Home', click: () => win.loadURL(MENU_URL) },
         { type: 'separator' },
-        ...games.map((g) => ({ label: g.title, click: () => openGame(g) })),
+        ...games.map((g) => ({ label: g.title, click: () => win.loadURL(gameUrl(g)) })),
         { type: 'separator' },
         { role: 'quit', label: '終了' },
       ],
@@ -161,12 +114,6 @@ app.whenReady().then(() => {
       });
     }
     const u = new URL(req.url);
-    // app://launch/<id> はページを移動せずに exe を起動する（204 なので画面はそのまま）
-    if (u.host === 'launch') {
-      const target = games.find((g) => g.native && g.id === u.pathname.replace(/^\/+/, ''));
-      if (target) launchNative(target);
-      return new Response(null, { status: 204 });
-    }
     const game = games.find((g) => g.id === u.host);
     if (game && game.localApi && u.pathname.startsWith('/api/')) return localApi.handle(req);
     const file = resolveFile(req.url);

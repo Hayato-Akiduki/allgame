@@ -18,9 +18,4 @@ module.exports = [
     webUrl: 'https://mini-game-land.akiduki2ha46.workers.dev/',
   },
   { id: 'tetsu', title: '鉄の大陸', path: '鉄の大陸.html', genre: 'ストラテジー', color: '#8a9bb0' },
-  {
-    id: 'japan-drive', title: '日本一周ドライブ3D', path: 'native/japandrive/JapanDrive3D.exe', genre: '3D ドライブ（別ウィンドウで起動）', color: '#e8433b',
-    // C# で作った exe。ALLGAME の中では表示できないので、別ウィンドウで起動する
-    native: true,
-  },
 ];
