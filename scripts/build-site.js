@@ -6,6 +6,7 @@
 // - exe のゲーム（native）はサイトには入れない
 // - webUrl があるゲーム（ミニゲームランド）は公開中のサイトへのリンクにする
 // - トップページはアプリのゲーム選択画面（app/menu/index.html）をそのまま使う
+// - 各ゲームの HTML に共通スクリプト（site/hub.js：一覧へ戻るタブなど）を読み込ませる
 const fs = require('fs');
 const path = require('path');
 const games = require('../app/games');
@@ -18,6 +19,15 @@ const SKIP = new Set(['.claude', '.git', '.gitignore', 'README.md', 'balance']);
 
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
+
+// 各ゲームの HTML の最後に共通スクリプトを読み込ませる（元のファイルは変えない）
+function injectHub(htmlFile) {
+  const tag = '<script src="../hub.js"></script>';
+  let html = fs.readFileSync(htmlFile, 'utf8');
+  const i = html.toLowerCase().lastIndexOf('</body>');
+  html = i >= 0 ? html.slice(0, i) + tag + '\n' + html.slice(i) : html + '\n' + tag + '\n';
+  fs.writeFileSync(htmlFile, html);
+}
 
 const list = [];
 for (const g of games) {
@@ -40,11 +50,13 @@ for (const g of games) {
     fs.mkdirSync(dest, { recursive: true });
     fs.copyFileSync(src, path.join(dest, 'index.html'));
   }
+  injectHub(path.join(dest, 'index.html'));
   list.push({ id: g.id, title: g.title, genre: g.genre, color: g.color, url: `${g.id}/` }); // 相対パス（GitHub Pages のサブフォルダでも動くように）
 }
 
 fs.copyFileSync(path.join(ROOT, 'app', 'menu', 'index.html'), path.join(OUT, 'index.html'));
 fs.copyFileSync(path.join(ROOT, 'build', 'icon.png'), path.join(OUT, 'icon.png'));
+fs.copyFileSync(path.join(ROOT, 'site', 'hub.js'), path.join(OUT, 'hub.js'));
 // GitHub Pages が「_ で始まるファイル」を無視しないようにする
 fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
 fs.writeFileSync(path.join(OUT, '__games.json'), JSON.stringify({ version: pkg.version, games: list }));
