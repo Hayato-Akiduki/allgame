@@ -13,6 +13,8 @@ const pkg = require('../package.json');
 
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'site-dist');
+const THREE_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+const THREE_LOCAL = '../vendor/three.r128.min.js';
 // サイトに載せないもの（開発用の設定・メモ、MONEY-WARS のバランス調整ツール）
 const SKIP = new Set(['.claude', '.git', '.gitignore', 'README.md', 'balance']);
 
@@ -23,6 +25,7 @@ fs.mkdirSync(OUT, { recursive: true });
 function injectHub(htmlFile) {
   const tag = '<script src="../hub.js"></script>';
   let html = fs.readFileSync(htmlFile, 'utf8');
+  html = html.replace(`src="${THREE_CDN}"`, `src="${THREE_LOCAL}"`);
   const i = html.toLowerCase().lastIndexOf('</body>');
   html = i >= 0 ? html.slice(0, i) + tag + '\n' + html.slice(i) : html + '\n' + tag + '\n';
   fs.writeFileSync(htmlFile, html);
@@ -61,6 +64,7 @@ fs.copyFileSync(path.join(ROOT, 'site', 'dashboard.js'), path.join(OUT, 'dashboa
 fs.copyFileSync(path.join(ROOT, 'site', 'backup.js'), path.join(OUT, 'backup.js'));
 fs.copyFileSync(path.join(ROOT, 'build', 'icon.png'), path.join(OUT, 'icon.png'));
 fs.copyFileSync(path.join(ROOT, 'site', 'hub.js'), path.join(OUT, 'hub.js'));
+fs.cpSync(path.join(ROOT, 'site', 'vendor'), path.join(OUT, 'vendor'), { recursive: true });
 // GitHub Pages が「_ で始まるファイル」を無視しないようにする
 fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
 fs.writeFileSync(path.join(OUT, '__games.json'), JSON.stringify({ version: pkg.version, games: list }));
