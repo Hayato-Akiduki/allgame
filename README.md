@@ -14,6 +14,16 @@ npm run site:serve
 
 http://localhost:8800 で表示できます（Ctrl+C で終了）。組み立てるだけなら `npm run site` です。追加のインストールは不要で、Node.js だけで動きます。
 
+## Windows インストール版
+
+- 配布版は [GitHub Releases](https://github.com/Hayato-Akiduki/allgame/releases) の `ALLGAME-Setup-<バージョン>.exe` でインストールします。
+- 起動時と起動中4時間ごとに更新を確認します。「ヘルプ → 更新を確認」から手動でも確認できます。更新はバックグラウンドで取得し、通常終了時か「今すぐ再起動」を選んだときに適用します。
+- ゲームとホームはアプリ内の固定アドレスで開き、セーブと設定はインストール先とは別のユーザーデータ領域に保存します。Web 版から移す場合はセーブの書き出し・読み込みを使ってください。
+
+開発環境では Node.js 24 で `npm ci --ignore-scripts` を実行します。`npm run dist` で Windows x64 用のインストーラーと更新用のファイルを `dist/` に生成します。開発画面を開くには `node node_modules/electron/install.js` で Electron 本体を取得してから `npm start` を実行します。
+
+GitHub Actions の「Windows installer」を手動実行すると、配布前に成果物を取得できます。公開時は `package.json` と `package-lock.json` のバージョンを上げ、一致する `v<バージョン>` タグを GitHub に送ると、インストーラー・ブロックマップ・`latest.yml` が揃った状態で Releases に公開されます。
+
 ## 構成
 
 | ファイル | 役割 |
@@ -38,7 +48,7 @@ Spike Line、ナワバリインク、CYBER ARENA は、組み立て後の `site-
 - コントローラー（十字キー・スティックで移動、A 決定、B 戻る）とマウス（ホイール・クリック）でも操作できます。
 - 最近遊んだゲームが左に来ます。
 - ゲームの中では、画面上端の中央にマウスを近づけると「◀ ALLGAME」タブが下りてきて、一覧に戻れます。
-- ミニゲームランドは同じウィンドウで開きます。Web 版はブラウザの「戻る」で一覧に戻れます。EXE 側で表示する場合は、対象 URL への同一ウィンドウ遷移と、ゲーム一覧に戻る操作をアプリ側で有効にしてください。
+- ミニゲームランドは同じウィンドウで開きます。Windows 版は「ゲーム → ゲーム一覧に戻る」か Alt+Home、Web 版はブラウザの「戻る」で一覧に戻れます。
 
 ## 記録・スタンプ・セーブ
 
