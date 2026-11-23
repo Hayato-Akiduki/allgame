@@ -34,7 +34,7 @@ function injectHub(htmlFile) {
 const list = [];
 for (const g of games) {
   if (g.webUrl) {
-    list.push({ id: g.id, icon: g.icon, title: g.title, genre: g.genre, color: g.color, url: g.webUrl, external: true });
+    list.push({ id: g.id, icon: g.icon, title: g.title, genre: g.genre, color: g.color, url: g.webUrl, external: true, sameWindow: g.sameWindow === true });
     continue;
   }
   const src = path.join(ROOT, g.path);

@@ -295,7 +295,7 @@
       t.setAttribute('aria-label', g.title);
       t.style.setProperty('--c', g.color);
       t.appendChild(el('div', 't-name', g.title));
-      if (g.external) t.appendChild(el('span', 't-badge ext', '別サイト ↗'));
+      if (g.external) t.appendChild(el('span', 't-badge ext', g.sameWindow ? 'オンライン' : '別サイト ↗'));
       else if (data && !data.perGame[g.id].played) t.appendChild(el('span', 't-badge', '未プレイ'));
       t.addEventListener('mousemove', (e) => { if (realMove(e) && (zone !== 'shelf' || idx !== i)) { zone = 'shelf'; select(i, false); } });
       t.addEventListener('click', () => { zone = 'shelf'; select(i, false); launch(); });
@@ -368,12 +368,12 @@
     info.appendChild(el('div', 'i-title', g.title));
     const meta = [g.genre];
     const pg = data && data.perGame[g.id];
-    if (g.external) meta.push('別のサイトで開きます');
+    if (g.external) meta.push(g.sameWindow ? 'インターネット接続が必要' : '別のサイトで開きます');
     else if (pg && pg.plays) meta.push(`${pg.plays}回`, window.ALLGAME_DATA.duration(pg.ms), `最後に遊んだのは ${window.ALLGAME_DATA.ago(pg.last)}`);
     else if (pg && !pg.played) meta.push('まだ遊んでいません');
     info.appendChild(el('div', 'i-meta', meta.join('　·　')));
     info.appendChild(el('div', 'i-prog', (pg && pg.progress) || ''));
-    const play = el('button', 'i-play', g.external ? '別サイトを開く' : '遊ぶ');
+    const play = el('button', 'i-play', g.external && !g.sameWindow ? '別サイトを開く' : '遊ぶ');
     play.type = 'button'; play.tabIndex = -1;
     play.addEventListener('click', launch);
     info.appendChild(play);
@@ -405,7 +405,11 @@
   function launch() {
     const g = order[idx];
     beep('ok');
-    if (g.external) { window.open(g.url, '_blank', 'noopener'); return; }
+    if (g.external && !g.sameWindow) { window.open(g.url, '_blank', 'noopener'); return; }
+    if (g.sameWindow && navigator.onLine === false) {
+      toast('🌐', 'インターネット接続が必要です', '接続してから、もう一度開いてください');
+      return;
+    }
     $('fade').classList.add('on');
     setTimeout(() => { location.href = g.url; }, 230);
   }
