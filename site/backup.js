@@ -42,6 +42,42 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  function restoreSaves(entries) {
+    // 書き込み前に、変更するキーの値をすべて控える。
+    let previous;
+    try {
+      previous = entries.map(([key]) => localStorage.getItem(key));
+    } catch {
+      alert('現在のセーブを読み出せなかったため、復元を中止しました。');
+      return false;
+    }
+
+    let written = 0;
+    try {
+      for (const [key, value] of entries) {
+        localStorage.setItem(key, value);
+        written++;
+      }
+      return true;
+    } catch {
+      // 書き込みを逆順に取り消す。今回追加したキーは削除する。
+      let restored = true;
+      for (let i = written - 1; i >= 0; i--) {
+        const [key] = entries[i];
+        try {
+          if (previous[i] === null) localStorage.removeItem(key);
+          else localStorage.setItem(key, previous[i]);
+        } catch {
+          restored = false;
+        }
+      }
+      alert(restored
+        ? 'セーブを書き込めなかったため、復元前の状態を維持しました。'
+        : 'セーブの復元に失敗し、一部を元に戻せませんでした。お手元に復元前のバックアップがあればご確認ください。');
+      return false;
+    }
+  }
+
   async function importSaves(file, prefixes) {
     let parsed;
     try { parsed = JSON.parse(await file.text()); } catch { alert('ファイルを読み取れませんでした。ALLGAME で書き出したファイルを選んでください。'); return; }
@@ -58,28 +94,45 @@
       'このブラウザにある同じゲームのセーブは上書きされ、元に戻せません。\n' +
       '心配なときは、先に「セーブを書き出す」で今のセーブを保存してください。\n\nよろしいですか？'
     );
-    if (!ok) return;
-    try {
-      for (const [k, v] of entries) localStorage.setItem(k, v);
-    } catch {
-      alert('セーブを書き込めませんでした（ブラウザの保存容量がいっぱいの可能性があります）。');
-      return;
-    }
+    if (!ok || !restoreSaves(entries)) return;
     alert(`${entries.length}件のセーブを読み込みました。`);
     location.reload();
   }
 
   // トップページから呼ぶための関数。ボタンなどの表示はトップページ側でする
   const prefixesReady = fetch('__games.json')
-    .then((r) => r.json())
-    .then((d) => OWN_KEYS.concat(...(d.games || []).map((g) => g.saveKeys || [])))
-    .catch(() => OWN_KEYS);
+    .then((response) => {
+      if (!response.ok) throw new Error('ゲーム一覧の取得に失敗しました。');
+      return response.json();
+    })
+    .then(({ games }) => {
+      if (!Array.isArray(games) || games.length === 0) throw new Error('ゲーム一覧が空です。');
+      const saveKeys = games.flatMap((game) => {
+        if (game.external === true) return [];
+        if (!Array.isArray(game.saveKeys) || game.saveKeys.some((key) => typeof key !== 'string' || !key.trim())) {
+          throw new Error('ゲーム一覧のセーブ設定が無効です。');
+        }
+        return game.saveKeys;
+      });
+      return OWN_KEYS.concat(saveKeys);
+    })
+    .catch(() => null);
+
+  async function getPrefixes() {
+    const prefixes = await prefixesReady;
+    if (!prefixes) alert('ゲーム一覧を読み込めなかったため、セーブの書き出し・読み込みを中止しました。画面を開き直してお試しください。');
+    return prefixes;
+  }
 
   window.ALLGAME_BACKUP = {
-    async exportSaves() { exportSaves(await prefixesReady); },
+    async exportSaves() {
+      const prefixes = await getPrefixes();
+      if (prefixes) exportSaves(prefixes);
+    },
     // ファイル選択を開き、選ばれたファイルを読み込む
     async importSaves() {
-      const prefixes = await prefixesReady;
+      const prefixes = await getPrefixes();
+      if (!prefixes) return;
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = '.json,application/json';
@@ -90,6 +143,9 @@
       input.click();
     },
     // テスト用: ファイルを直接渡して読み込む
-    async importFile(file) { importSaves(file, await prefixesReady); },
+    async importFile(file) {
+      const prefixes = await getPrefixes();
+      if (prefixes) await importSaves(file, prefixes);
+    },
   };
 })();
